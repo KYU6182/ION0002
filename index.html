@@ -36,7 +36,6 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, arrayUnion, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // 環境設定を優先しつつデフォルト値を保持
         const config = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config) 
             : {
@@ -52,7 +51,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // SDKをReact側に公開
         window.FirebaseSDK = {
             auth, db, 
             methods: { signInAnonymously, signInWithCustomToken, onAuthStateChanged, collection, doc, onSnapshot, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, arrayUnion, query, orderBy },
@@ -320,7 +318,7 @@
                         <div className="flex justify-between items-center px-1">
                             <h2 className="text-sm text-slate-400 uppercase italic font-black">Today's Shift</h2>
                             <button onClick={onOpenAdd} className="bg-indigo-600 text-white text-[10px] px-4 py-2 rounded-full shadow-md flex items-center gap-1 font-black">
-                                <Icon name="Plus" size={12} /> シフト登録
+                                <Icon name="Plus" size={12} /> シフト一括登録
                             </button>
                         </div>
                         <div className="grid grid-cols-1 gap-3">
@@ -335,7 +333,6 @@
                                                 {activeStaff.length > 0 ? activeStaff.map(s => (
                                                     <span key={s.id} className="text-slate-800 text-base font-black flex items-center gap-1">
                                                         {s.staff}
-                                                        <button onClick={() => onEdit(s)} className="text-slate-300 p-1"><Icon name="Edit3" size={12}/></button>
                                                     </span>
                                                 )) : <span className="text-slate-300 italic text-sm">予定なし</span>}
                                             </div>
@@ -371,16 +368,15 @@
                                 const hasHoliday = item.shifts.some(s => s.taniguchiHoliday);
                                 
                                 return (
-                                    <div key={item.date} className={`flex items-start gap-4 p-3 rounded-2xl border ${isToday ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-100'}`}>
+                                    <div key={item.date} onClick={() => onEdit(item.date)} className={`flex items-start gap-4 p-3 rounded-2xl border cursor-pointer transition-all active:scale-[0.98] ${isToday ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-100'}`}>
                                         <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black shrink-0 ${isToday ? 'bg-indigo-600 text-white' : isWeekend ? 'bg-rose-100 text-rose-600' : 'bg-white text-slate-400'}`}>
                                             {item.day}
                                         </div>
-                                        <div className="flex-1 space-y-1">
-                                            <div className="flex flex-wrap gap-2">
+                                        <div className="flex-1 space-y-1 min-w-0">
+                                            <div className="flex flex-wrap gap-1">
                                                 {item.shifts.map(s => (
-                                                    <div key={s.id} className="text-[11px] font-black text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                                                    <div key={s.id} className="text-[9px] font-black text-slate-600 bg-white px-1.5 py-0.5 rounded border border-slate-200 whitespace-nowrap">
                                                         {s.timeSlot}: {s.staff}
-                                                        <button onClick={() => onEdit(s)} className="ml-1 text-slate-300"><Icon name="Edit3" size={10}/></button>
                                                     </div>
                                                 ))}
                                                 {item.shifts.length === 0 && !hasHoliday && <span className="text-[10px] text-slate-300 italic">シフトなし</span>}
@@ -509,7 +505,7 @@
                         <label className="text-[10px] text-slate-400 uppercase tracking-widest pl-2 font-black">カテゴリーフィルター</label>
                         <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                             {['すべて', ...MANUAL_TAGS].map(t => (
-                                <button key={t} onClick={() => setTagFilter(t)} className={`px-4 py-2 rounded-xl border text-[11px] whitespace-nowrap transition-all shadow-sm font-black ${tagFilter === t ? 'bg-indigo-500 text-white border-indigo-500' : 'bg-white text-slate-400 border-slate-100'}`}>{t}</button>
+                                <button key={t} onClick={() => setTagFilter(t)} className={`px-4 py-2 rounded-xl border text-[11px] whitespace-nowrap transition-all shadow-sm font-black ${tagFilter === t ? 'bg-indigo-50 text-white border-indigo-500' : 'bg-white text-slate-400 border-slate-100'}`}>{t}</button>
                             ))}
                         </div>
                     </div>
@@ -523,6 +519,121 @@
                         <button onClick={onOpenAdd} className="bg-indigo-600 text-white px-10 py-5 rounded-[2rem] active:scale-95 shadow-xl flex items-center gap-2 font-black">
                             <Icon name="Plus" size={20} /> 新規情報を追加
                         </button>
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Shift Bulk Registration Modal ---
+        function ShiftBulkModal({ date, existingShifts, onClose, onSave }) {
+            const [selectedDate, setSelectedDate] = useState(date || new Date().toLocaleDateString('sv-SE'));
+            const [taniguchiHoliday, setTaniguchiHoliday] = useState(existingShifts.some(s => s.taniguchiHoliday));
+            
+            // 時間帯ごとのスタッフ選択状態 { "9-12": ["中牟田", "江藤"], ... }
+            const [assignments, setAssignments] = useState(() => {
+                const initial = {};
+                TIME_SLOTS.forEach(slot => {
+                    initial[slot] = existingShifts.filter(s => s.timeSlot === slot).map(s => s.staff);
+                });
+                return initial;
+            });
+
+            const [isSaving, setIsSaving] = useState(false);
+
+            const toggleStaff = (slot, staff) => {
+                setAssignments(prev => {
+                    const current = prev[slot] || [];
+                    if (current.includes(staff)) {
+                        return { ...prev, [slot]: current.filter(s => s !== staff) };
+                    } else {
+                        return { ...prev, [slot]: [...current, staff] };
+                    }
+                });
+            };
+
+            const handleSave = async () => {
+                setIsSaving(true);
+                // データを整形
+                const flatShifts = [];
+                Object.entries(assignments).forEach(([slot, staffs]) => {
+                    staffs.forEach(staff => {
+                        flatShifts.push({
+                            date: selectedDate,
+                            timeSlot: slot,
+                            staff: staff,
+                            taniguchiHoliday: taniguchiHoliday
+                        });
+                    });
+                });
+                
+                // シフトが空でも「休みフラグ」だけある場合を考慮
+                if (flatShifts.length === 0 && taniguchiHoliday) {
+                    flatShifts.push({
+                        date: selectedDate,
+                        timeSlot: "OFF", // ダミー
+                        staff: "NONE", // ダミー
+                        taniguchiHoliday: true
+                    });
+                }
+
+                await onSave(selectedDate, flatShifts);
+                setIsSaving(false);
+                onClose();
+            };
+
+            return (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1500] flex items-end sm:items-center justify-center p-4 font-black">
+                    <div className="bg-white w-full max-w-lg rounded-[2.5rem] p-6 shadow-2xl overflow-y-auto max-h-[90vh] animate-in slide-in-from-bottom-5">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-black">シフト一括登録</h3>
+                            <button onClick={onClose} className="p-2 text-slate-400 font-black">✕</button>
+                        </div>
+
+                        <div className="space-y-6 text-left">
+                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                                <div className="space-y-1 flex-1 w-full">
+                                    <label className="text-[10px] text-slate-400 uppercase font-black pl-2">対象日</label>
+                                    <input type="date" className="w-full bg-slate-50 border rounded-xl px-4 py-3 text-sm font-black outline-none" value={selectedDate} onChange={e => setSelectedDate(e.target.value)} />
+                                </div>
+                                <div className="flex items-center gap-3 bg-rose-50 border border-rose-100 px-5 py-3 rounded-2xl cursor-pointer active:scale-95 transition-all" onClick={() => setTaniguchiHoliday(!taniguchiHoliday)}>
+                                    <input type="checkbox" className="w-5 h-5 accent-rose-600 rounded" checked={taniguchiHoliday} readOnly />
+                                    <span className="text-sm font-black text-rose-600">谷口休み</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {TIME_SLOTS.map(slot => (
+                                    <div key={slot} className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">{slot}</span>
+                                            <div className="h-[1px] flex-1 bg-slate-100"></div>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {STAFF_LIST.map(staff => {
+                                                const isActive = assignments[slot]?.includes(staff);
+                                                return (
+                                                    <button
+                                                        key={staff}
+                                                        onClick={() => toggleStaff(slot, staff)}
+                                                        className={`px-3 py-2 rounded-xl text-[11px] font-black transition-all border ${
+                                                            isActive 
+                                                            ? 'bg-slate-800 text-white border-slate-800 shadow-md' 
+                                                            : 'bg-white text-slate-400 border-slate-100 hover:bg-slate-50'
+                                                        }`}
+                                                    >
+                                                        {staff}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+
+                            <button onClick={handleSave} disabled={isSaving} className="w-full bg-indigo-600 text-white py-5 rounded-[1.5rem] font-black shadow-xl active:scale-95 transition-all mt-4">
+                                {isSaving ? "保存中..." : "この内容で保存する"}
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -626,8 +737,8 @@
             const [showAddManual, setShowAddManual] = useState(false);
             const [showAddBooking, setShowAddBooking] = useState(false);
             const [editingBooking, setEditingBooking] = useState(null);
-            const [showAddShift, setShowAddShift] = useState(false);
-            const [editingShift, setEditingShift] = useState(null);
+            const [showShiftBulk, setShowShiftBulk] = useState(false);
+            const [selectedShiftDate, setSelectedShiftDate] = useState(null);
             const [selectedDayDetail, setSelectedDayDetail] = useState(null);
             const [selectedImage, setSelectedImage] = useState(null);
             const [showArchive, setShowArchive] = useState(false);
@@ -720,6 +831,26 @@
                 } catch(e) { console.error("Delete Error:", e); }
             };
 
+            // シフト一括保存ロジック
+            const handleSaveShiftBulk = async (date, newShifts) => {
+                if (!user) return;
+                try {
+                    // その日の既存シフトを全て削除
+                    const existingToday = shifts.filter(s => s.date === date);
+                    for (const s of existingToday) {
+                        await methods.deleteDoc(methods.doc(db, 'artifacts', appId, 'public', 'data', 'shifts', s.id));
+                    }
+                    // 新しいシフトを全て追加
+                    for (const s of newShifts) {
+                        await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'shifts'), {
+                            ...s,
+                            createdAt: methods.serverTimestamp(),
+                            userId: user.uid
+                        });
+                    }
+                } catch(e) { console.error("Shift Bulk Save Error:", e); }
+            };
+
             const filteredMaintenance = useMemo(() => {
                 const base = records.filter(r => selectedFacility === 'all' || r.facility === selectedFacility);
                 if (!maintenanceSearch) return base;
@@ -740,13 +871,6 @@
                 { name: 'babyChair', label: 'ベビーチェア利用', type: 'checkbox' },
                 { name: 'luggage', label: 'IN前荷物預かり', type: 'checkbox' },
                 { name: 'notes', label: '備考事項', type: 'textarea', required: false }
-            ];
-
-            const shiftFields = [
-                { name: 'date', label: '日付', type: 'date', default: new Date().toLocaleDateString('sv-SE') },
-                { name: 'timeSlot', label: '時間帯', type: 'select', options: TIME_SLOTS },
-                { name: 'staff', label: 'スタッフ', type: 'select', options: STAFF_LIST },
-                { name: 'taniguchiHoliday', label: '谷口休み', type: 'checkbox' }
             ];
 
             if (!user) return (
@@ -771,7 +895,7 @@
                     <main className="p-4 max-w-md mx-auto space-y-6">
                         {activeTab === 'schedule' && <ScheduleSection bookings={bookings} selectedFacility={selectedFacility} onOpenAdd={() => setShowAddBooking(true)} onOpenDetail={setSelectedDayDetail} />}
                         
-                        {activeTab === 'shift' && <ShiftSection shifts={shifts} onOpenAdd={() => setShowAddShift(true)} onDelete={id => handleDelete('shifts', id)} onEdit={setEditingShift} />}
+                        {activeTab === 'shift' && <ShiftSection shifts={shifts} onOpenAdd={() => { setSelectedShiftDate(null); setShowShiftBulk(true); }} onDelete={id => handleDelete('shifts', id)} onEdit={(date) => { setSelectedShiftDate(date); setShowShiftBulk(true); }} />}
 
                         {activeTab === 'maintenance' && (
                             <div className="space-y-6 animate-in fade-in text-left font-black">
@@ -822,8 +946,14 @@
                     {/* Modals */}
                     {showAddBooking && <AddModal title="予約登録" onClose={() => setShowAddBooking(false)} onSave={d => handleSave('bookings', d)} fields={bookingFields} />}
                     {editingBooking && <AddModal title="予約編集" initialData={editingBooking} onClose={() => setEditingBooking(null)} onSave={d => handleUpdate('bookings', editingBooking.id, d)} fields={bookingFields} />}
-                    {showAddShift && <AddModal title="シフト登録" onClose={() => setShowAddShift(false)} onSave={d => handleSave('shifts', d)} fields={shiftFields} />}
-                    {editingShift && <AddModal title="シフト編集" initialData={editingShift} onClose={() => setEditingShift(null)} onSave={d => handleUpdate('shifts', editingShift.id, d)} fields={shiftFields} />}
+                    
+                    {showShiftBulk && <ShiftBulkModal 
+                        date={selectedShiftDate || new Date().toLocaleDateString('sv-SE')} 
+                        existingShifts={shifts.filter(s => s.date === (selectedShiftDate || new Date().toLocaleDateString('sv-SE')))} 
+                        onClose={() => setShowShiftBulk(false)} 
+                        onSave={handleSaveShiftBulk} 
+                    />}
+
                     {showAddMaintenance && <AddModal title="メンテナンス報告" onClose={() => setShowAddMaintenance(false)} onSave={d => handleSave('maintenance_records', d)} hasImage fields={[
                         { name: 'facility', label: '施設', type: 'select', options: FACILITIES },
                         { name: 'staff', label: '担当者名', type: 'text' },
