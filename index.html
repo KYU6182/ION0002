@@ -587,7 +587,7 @@
                                                 onDelete={onDelete} 
                                                 onEdit={onEdit} 
                                                 onAddUpdate={onAddUpdate} 
-                                                onImageClick={0} 
+                                                onImageClick={onImageClick} 
                                                 selectionMode={selectionMode} 
                                                 isSelected={selectedMaintIds.has(r.id)} 
                                                 onToggleSelection={() => onToggleSelection(r.id)} 
@@ -1036,10 +1036,18 @@
                 const selectedBookings = bookings.filter(b => selectedReportBookingIds.has(b.id));
                 selectedBookings.forEach((b, idx) => {
                     const isOUT = b.endDate === todayStr; const isIN = b.startDate === todayStr; const isSTAY = todayStr > b.startDate && todayStr < b.endDate;
+                    
+                    const m = b.menCount || 0;
+                    const w = b.womenCount || 0;
+                    const c = b.childCount || 0;
+                    const currentTotal = m + w + c;
+
                     text += `【${b.facility}】\n`;
-                    if (isOUT) { text += `チェックアウトされました\n`; } 
-                    else {
-                        const m = b.menCount || 0; const w = b.womenCount || 0; const c = b.childCount || 0; const currentTotal = m + w + c;
+                    if (isOUT) { 
+                        text += `チェックアウトされました\n`; 
+                    } else if (currentTotal === 0) {
+                        text += `まだチェックインされていません / 予定${b.people}名\n`;
+                    } else {
                         const parts = []; if (m > 0) parts.push(`男${m}名`); if (w > 0) parts.push(`女${w}名`); if (c > 0) parts.push(`子供${c}名`);
                         if (parts.length > 0) { text += parts.join('、') + `\n`; }
                         text += `計${currentTotal}名 / 予定${b.people}名\n`;
