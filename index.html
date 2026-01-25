@@ -80,7 +80,7 @@
         const STAFF_LIST = ["中牟田", "江藤", "松尾", "中牟田（昌）", "内尾", "橋口", "谷口", "事務所"];
         const TIME_SLOTS = ["9-12", "12-15", "15-18", "18-21", "21-24"];
 
-        // --- 1. Core Helpers ---
+        // --- Core Helpers ---
         function Icon({ name, size = 24, color = "currentColor", strokeWidth = 2, className = "" }) {
             const iconData = lucide.icons[name];
             if (!iconData) return null;
@@ -137,7 +137,7 @@
             });
         }
 
-        // --- 2. Shared Small UI Components ---
+        // --- Shared UI Components ---
         function NavItem({ active, iconName, label, onClick }) {
             return (
                 <button onClick={onClick} className={`flex flex-col items-center gap-1 transition-all active:scale-90 flex-1 ${active ? 'text-indigo-600' : 'text-slate-400'}`}>
@@ -174,7 +174,6 @@
             );
         }
 
-        // --- Check-in Counter Component ---
         function CheckInCounter({ booking, onUpdate }) {
             const counts = {
                 men: booking?.menCount || 0,
@@ -258,7 +257,7 @@
             );
         }
 
-        // --- 3. Modals ---
+        // --- Modals ---
         function AddModal({ title, onClose, onSave, fields, hasImage, initialData = null }) {
             const initial = {}; 
             fields.forEach(f => { 
@@ -429,7 +428,7 @@
             );
         }
 
-        // --- 4. Cards ---
+        // --- Cards ---
         function MaintenanceCard({ record, onDelete, onEdit, onAddUpdate, onImageClick, selectionMode, isSelected, onToggleSelection }) {
             const displayTime = formatDateTime(record.createdAt || record.date);
             const isToday = displayTime.includes("今日");
@@ -518,12 +517,17 @@
             );
         }
 
-        // --- 5. Main Content Sections ---
+        // --- Main Content Sections ---
 
-        // FIX: MaintenanceCardList component re-added
-        function MaintenanceCardList({ records, selectedFacility, maintenanceSearch, showArchive, selectionMode, selectedMaintIds, onToggleSelection, onEdit, onAddUpdate, onDelete, onImageClick }) {
+        function MaintenanceCardList({ records, selectedFacility, maintenanceSearch, maintenanceDateFilter, showArchive, selectionMode, selectedMaintIds, onToggleSelection, onEdit, onAddUpdate, onDelete, onImageClick }) {
             const sorted = useMemo(() => {
-                const base = records.filter(r => selectedFacility === 'all' || r.facility === selectedFacility);
+                let base = records.filter(r => selectedFacility === 'all' || r.facility === selectedFacility);
+                
+                // Date Filter logic
+                if (maintenanceDateFilter) {
+                    base = base.filter(r => r.date === maintenanceDateFilter);
+                }
+
                 const list = [...base].sort((a, b) => {
                     const getTime = (r) => {
                         const baseTime = r.createdAt?.seconds || new Date(r.date).getTime() / 1000 || 0;
@@ -533,9 +537,9 @@
                     return getTime(b) - getTime(a);
                 });
                 return maintenanceSearch ? list.filter(r => (r.task || "").toLowerCase().includes(maintenanceSearch.toLowerCase()) || (r.staff || "").toLowerCase().includes(maintenanceSearch.toLowerCase())) : list;
-            }, [records, selectedFacility, maintenanceSearch]);
+            }, [records, selectedFacility, maintenanceSearch, maintenanceDateFilter]);
             
-            const displayList = showArchive ? sorted : sorted.slice(0, 10);
+            const displayList = (showArchive || maintenanceDateFilter) ? sorted : sorted.slice(0, 10);
             
             return (
                 <div className="space-y-4 text-left">
@@ -626,7 +630,6 @@
             );
         }
 
-        // --- 6. Shift Section ---
         function ShiftSection({ shifts, onOpenAdd, onDelete, onEdit }) {
             const [viewDate, setViewDate] = useState(new Date());
             const year = viewDate.getFullYear();
@@ -681,7 +684,6 @@
                                 const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; 
                                 const dayShifts = shifts.filter(s => s.date === dateStr);
                                 
-                                // FIX: Sort staff by time slots
                                 const sortedDayShifts = [...dayShifts]
                                     .filter(s => s.staff !== "NONE")
                                     .sort((a, b) => TIME_SLOTS.indexOf(a.timeSlot) - TIME_SLOTS.indexOf(b.timeSlot));
@@ -704,7 +706,7 @@
             );
         }
 
-        // --- 7. Schedule Section Container ---
+        // --- Schedule Section Container ---
         function ScheduleSectionContainer({ selectedFacility, bookings, records, manuals, shifts, onOpenAdd, onOpenDetail, onLinkeyCheck, onUpdateBooking, onLineReport }) {
             const today = new Date();
             const todayStr = today.toLocaleDateString('sv-SE');
@@ -715,7 +717,29 @@
             const [viewDate, setViewDate] = useState(new Date());
             const year = viewDate.getFullYear(); const month = viewDate.getMonth();
             const firstDayIndex = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const todayList = useMemo(() => bookings.filter(b => b.startDate === todayStr || b.endDate === todayStr || (todayStr > b.startDate && todayStr < b.endDate)).filter(b => selectedFacility === 'all' || b.facility === selectedFacility), [bookings, todayStr, selectedFacility]);
+            
+            const highlights = useMemo(() => {
+                const base = bookings.filter(b => selectedFacility === 'all' || b.facility === selectedFacility);
+                return {
+                    out: base.filter(b => b.endDate === todayStr),
+                    in: base.filter(b => b.startDate === todayStr),
+                    stay: base.filter(b => todayStr > b.startDate && todayStr < b.endDate)
+                };
+            }, [bookings, todayStr, selectedFacility]);
+
+            const occupancyRates = useMemo(() => {
+                const results = {};
+                FACILITIES.forEach(f => {
+                    let bookedDays = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const isBooked = bookings.some(b => b.facility === f && dateStr >= b.startDate && dateStr < b.endDate);
+                        if (isBooked) bookedDays++;
+                    }
+                    results[f] = Math.round((bookedDays / daysInMonth) * 100);
+                });
+                return results;
+            }, [bookings, year, month, daysInMonth]);
             
             return (
                 <div className="space-y-6 animate-in fade-in duration-500 font-black text-left text-slate-900 max-w-full">
@@ -762,7 +786,7 @@
                         )}
                     </section>
 
-                    <section className="space-y-3 text-left">
+                    <section className="space-y-4 text-left">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 px-1 text-slate-900">
                             <h2 className="text-sm text-slate-400 uppercase italic font-black shrink-0">Today's Highlight</h2>
                             <div className="flex flex-wrap gap-1.5 w-full sm:w-auto text-slate-900">
@@ -771,26 +795,65 @@
                                 <button onClick={onOpenAdd} className="flex-1 sm:flex-none bg-indigo-600 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="Plus" size={12} /> 予約</button>
                             </div>
                         </div>
-                        <div className="grid gap-3 font-black max-w-full text-slate-900">
-                            {todayList.length > 0 ? todayList.map((b, i) => (
-                                <div key={i} className="bg-white p-3 sm:p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-start gap-3 sm:gap-4 group text-left overflow-hidden text-slate-900">
-                                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center font-black text-[8px] sm:text-[9px] ${b.startDate === todayStr ? 'bg-emerald-50 text-emerald-600' : b.endDate === todayStr ? 'bg-rose-50 text-rose-600' : 'bg-indigo-50 text-indigo-600'} shrink-0`}><Icon name={b.startDate === todayStr ? 'LogIn' : b.endDate === todayStr ? 'LogOut' : 'Bed'} size={14} /><span>{b.startDate === todayStr ? 'IN' : b.endDate === todayStr ? 'OUT' : 'Stay'}</span></div>
-                                    <div className="flex-1 min-w-0 font-black text-slate-900">
-                                        <div className="flex items-center gap-1 sm:gap-2 mb-0.5 text-slate-900">
-                                            <span className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: FACILITY_COLORS[b.facility]}}></span>
-                                            <span className="text-[10px] text-slate-400 font-black truncate">{b?.facility || '施設不明'} · {b?.people || 0}名</span>
-                                        </div>
-                                        <div className="text-slate-800 text-base sm:text-lg font-black truncate">{b?.guestName || '未設定'} 様</div>
-                                        <BookingOptions booking={b} />
-                                        <CheckInCounter booking={b} onUpdate={onUpdateBooking} />
+
+                        <div className="space-y-6">
+                            {[
+                                { title: 'OUT (チェックアウト)', data: highlights.out, color: 'text-rose-500', bg: 'bg-rose-50', icon: 'LogOut' },
+                                { title: 'IN (チェックイン)', data: highlights.in, color: 'text-emerald-500', bg: 'bg-emerald-50', icon: 'LogIn' },
+                                { title: 'STAY (滞在中)', data: highlights.stay, color: 'text-indigo-500', bg: 'bg-indigo-50', icon: 'Bed' }
+                            ].map(section => section.data.length > 0 && (
+                                <div key={section.title} className="space-y-3">
+                                    <h3 className={`text-[10px] font-black ${section.color} px-3 flex items-center gap-1.5`}>
+                                        <Icon name={section.icon} size={12} strokeWidth={3} /> {section.title}
+                                    </h3>
+                                    <div className="grid gap-3 font-black max-w-full text-slate-900">
+                                        {section.data.map((b, i) => (
+                                            <div key={i} className="bg-white p-3 sm:p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-start gap-3 sm:gap-4 group text-left overflow-hidden text-slate-900 animate-in slide-in-from-left-2">
+                                                <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center font-black text-[8px] sm:text-[9px] ${section.bg} ${section.color} shrink-0`}>
+                                                    <Icon name={section.icon} size={14} />
+                                                    <span>{section.title.split(' ')[0]}</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0 font-black text-slate-900">
+                                                    <div className="flex items-center justify-between mb-0.5 text-slate-900">
+                                                        <div className="flex items-center gap-1 sm:gap-2">
+                                                            <span className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: FACILITY_COLORS[b.facility]}}></span>
+                                                            <span className="text-[10px] text-slate-400 font-black truncate">{b?.facility || '施設不明'} · {b?.people || 0}名</span>
+                                                        </div>
+                                                        <span className="text-[9px] font-bold text-slate-300 italic">{formatMMDD(b.startDate)}-{formatMMDD(b.endDate)}</span>
+                                                    </div>
+                                                    <div className="text-slate-800 text-base sm:text-lg font-black truncate">{b?.guestName || '未設定'} 様</div>
+                                                    <BookingOptions booking={b} />
+                                                    <CheckInCounter booking={b} onUpdate={onUpdateBooking} />
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
-                            )) : <div className="py-10 text-center text-slate-300 italic bg-white rounded-[2rem] border-dashed border-2 font-black text-slate-900">本日の宿泊はありません</div>}
+                            ))}
+                            {(highlights.out.length === 0 && highlights.in.length === 0 && highlights.stay.length === 0) && (
+                                <div className="py-10 text-center text-slate-300 italic bg-white rounded-[2rem] border-dashed border-2 font-black text-slate-900">本日の稼働はありません</div>
+                            )}
                         </div>
                     </section>
 
                     <section className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 font-black text-slate-900">
-                        <div className="flex items-center justify-between mb-4 font-black text-slate-900"><h2 className="flex items-center gap-2 text-slate-800 font-black"><Icon name="Calendar" size={18} color="#6366F1" />{year}年 {month + 1}月</h2><div className="flex gap-1 text-slate-900"><button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 text-slate-400"><Icon name="ChevronLeft" size={20} /></button><button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 text-slate-400"><Icon name="ChevronRight" size={20} /></button></div></div>
+                        <div className="flex items-center justify-between mb-2 font-black text-slate-900">
+                            <h2 className="flex items-center gap-2 text-slate-800 font-black">
+                                <Icon name="Calendar" size={18} color="#6366F1" />{year}年 {month + 1}月
+                            </h2>
+                            <div className="flex gap-1 text-slate-900">
+                                <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 text-slate-400 active:scale-75 transition-transform"><Icon name="ChevronLeft" size={20} /></button>
+                                <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 text-slate-400 active:scale-75 transition-transform"><Icon name="ChevronRight" size={20} /></button>
+                            </div>
+                        </div>
+                        <div className="flex gap-2 px-1 mb-5 overflow-x-auto no-scrollbar">
+                            {FACILITIES.map(f => (
+                                <div key={f} className="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-2 flex flex-col items-center min-w-[70px]">
+                                    <span className="text-[8px] text-slate-400 mb-0.5">{f}宿泊率</span>
+                                    <span className="text-xs font-black" style={{color: FACILITY_COLORS[f]}}>{occupancyRates[f]}%</span>
+                                </div>
+                            ))}
+                        </div>
                         <div className="grid grid-cols-7 text-center text-[9px] font-black text-slate-300 mb-2 uppercase text-slate-900">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}</div>
                         <div className="calendar-grid text-slate-900">
                             {[...Array(firstDayIndex)].map((_, i) => <div key={`empty-${i}`} className="day-cell bg-slate-50/20"></div>)}
@@ -798,7 +861,24 @@
                                 const day = i + 1; const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; 
                                 const dayBookings = bookings.filter(b => dateStr >= b.startDate && dateStr <= b.endDate);
                                 const isToday = dateStr === todayStr;
-                                return (<div key={day} className="day-cell" onClick={() => onOpenDetail(dateStr)}><div className={`day-num font-black ${isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'}`}>{day}</div><div className="w-full flex flex-col items-center gap-0.5 px-0.5 overflow-hidden">{dayBookings.filter(db => selectedFacility === 'all' || db.facility === selectedFacility).slice(0, 4).map(db => { const isIN = db.startDate === dateStr; const isOUT = db.endDate === dateStr; const isMiddle = dateStr > db.startDate && dateStr < db.endDate; const statusLabel = isIN ? "IN" : isOUT ? "OUT" : isMiddle ? "中" : ""; if (!statusLabel) return null; return (<div key={db.id} className="booking-badge flex items-center justify-between" style={{backgroundColor: FACILITY_COLORS[db.facility]}}><span className="truncate">{db.facility}{statusLabel}</span><span className="badge-options">{db?.babyCrib && "ベ"}{db?.babyBath && "バ"}{db?.babyChair && "チ"}{db?.luggage && "荷"}{db?.notes && "＊"}</span></div>); })}{dayBookings.length > 4 && <div className="text-[5px] text-slate-300">+{dayBookings.length - 4}</div>}</div></div>);
+                                return (
+                                    <div key={day} className="day-cell" onClick={() => onOpenDetail(dateStr)}>
+                                        <div className={`day-num font-black ${isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'}`}>{day}</div>
+                                        <div className="w-full flex flex-col items-center gap-0.5 px-0.5 overflow-hidden">
+                                            {dayBookings.filter(db => selectedFacility === 'all' || db.facility === selectedFacility).slice(0, 4).map(db => { 
+                                                const isIN = db.startDate === dateStr; const isOUT = db.endDate === dateStr; const isMiddle = dateStr > db.startDate && dateStr < db.endDate; 
+                                                const statusLabel = isIN ? "IN" : isOUT ? "OUT" : isMiddle ? "中" : ""; 
+                                                if (!statusLabel) return null; 
+                                                return (
+                                                    <div key={db.id} className="booking-badge flex items-center justify-between" style={{backgroundColor: FACILITY_COLORS[db.facility]}}>
+                                                        <span className="truncate">{db.facility}{statusLabel}</span>
+                                                        <span className="badge-options">{db?.babyCrib && "ベ"}{db?.babyBath && "バ"}{db?.babyChair && "チ"}{db?.luggage && "荷"}{db?.notes && "＊"}</span>
+                                                    </div>
+                                                ); 
+                                            })}{dayBookings.length > 4 && <div className="text-[5px] text-slate-300">+{dayBookings.length - 4}</div>}
+                                        </div>
+                                    </div>
+                                );
                             })}
                         </div>
                     </section>
@@ -806,7 +886,7 @@
             );
         }
 
-        // --- 8. Main App Component ---
+        // --- Main App Component ---
 
         function App() {
             const [user, setUser] = useState(null);
@@ -825,6 +905,7 @@
             const [editingMaintenanceRecord, setEditingMaintenanceRecord] = useState(null);
             const [showAddUpdate, setShowAddUpdate] = useState(null);
             const [maintenanceSearch, setMaintenanceSearch] = useState('');
+            const [maintenanceDateFilter, setMaintenanceDateFilter] = useState(''); // New state for jumping to a date
             const [showAddInventory, setShowAddInventory] = useState(false);
             const [editingInventoryItem, setEditingInventoryItem] = useState(null);
             const [showInventoryHistory, setShowInventoryHistory] = useState(null);
@@ -841,6 +922,7 @@
             const [dataLoaded, setDataLoaded] = useState(false);
             const [showLineReportSelector, setShowLineReportSelector] = useState(false);
             const [selectedReportBookingIds, setSelectedReportBookingIds] = useState(new Set());
+            const [showBulkCopyModal, setShowBulkCopyModal] = useState(false);
 
             const { methods, auth, db, appId, initialToken } = window.FirebaseSDK;
 
@@ -879,7 +961,6 @@
                 const todayList = bookings.filter(b => todayStr >= b.startDate && todayStr < b.endDate);
                 let text = "リンキーチェックです\n今日の宿泊状況\n\n";
                 text += `本日（${today.getMonth()+1}/${today.getDate()}）\n`;
-                
                 FACILITIES.forEach(facility => {
                     const facilityBookings = todayList.filter(book => book.facility === facility);
                     if (facilityBookings.length > 0) {
@@ -908,32 +989,23 @@
             const handleBulkLineReport = () => {
                 if (selectedReportBookingIds.size === 0) return;
                 const now = new Date();
+                const todayStr = now.toLocaleDateString('sv-SE');
                 const timeStr = `${now.getHours()}時${String(now.getMinutes()).padStart(2, '0')}分`;
                 let text = `${timeStr}\n\n`;
                 const selectedBookings = bookings.filter(b => selectedReportBookingIds.has(b.id));
                 selectedBookings.forEach((b, idx) => {
+                    const isOUT = b.endDate === todayStr; const isIN = b.startDate === todayStr; const isSTAY = todayStr > b.startDate && todayStr < b.endDate;
                     text += `【${b.facility}】\n`;
-                    if (b.checkedOutAt) {
-                        text += `チェックアウト済み\n`;
-                    } else {
-                        const m = b.menCount || 0;
-                        const w = b.womenCount || 0;
-                        const c = b.childCount || 0;
-                        const currentTotal = m + w + c;
-                        
-                        const parts = [];
-                        if (m > 0) parts.push(`男${m}名`);
-                        if (w > 0) parts.push(`女${w}名`);
-                        if (c > 0) parts.push(`子供${c}名`);
-                        
-                        if (parts.length > 0) {
-                            text += parts.join('、') + `\n`;
-                        }
+                    if (isOUT) { text += `チェックアウトされました\n`; } 
+                    else {
+                        const m = b.menCount || 0; const w = b.womenCount || 0; const c = b.childCount || 0; const currentTotal = m + w + c;
+                        const parts = []; if (m > 0) parts.push(`男${m}名`); if (w > 0) parts.push(`女${w}名`); if (c > 0) parts.push(`子供${c}名`);
+                        if (parts.length > 0) { text += parts.join('、') + `\n`; }
                         text += `計${currentTotal}名 / 予定${b.people}名\n`;
+                        if (isIN) { text += `チェックインしました\n`; } else if (isSTAY) { text += `入室中（滞在）\n`; }
                     }
                     if (idx < selectedBookings.length - 1) text += `\n`;
                 });
-                text += `\nチェックインしています`;
                 copyToClipboard(text, "LINE報告文をコピーしました");
                 setShowLineReportSelector(false);
                 setSelectedReportBookingIds(new Set());
@@ -966,11 +1038,6 @@
                 for (const s of newShifts) await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'shifts'), { ...s, createdAt: methods.serverTimestamp(), userId: user.uid });
             };
 
-            const dayDetailBookings = useMemo(() => {
-                if (!selectedDayStr) return [];
-                return bookings.filter(b => selectedDayStr >= b.startDate && selectedDayStr <= b.endDate);
-            }, [selectedDayStr, bookings]);
-
             const handleAddMaintUpdate = async (data) => {
                 if (!showAddUpdate || !user) return;
                 const record = showAddUpdate;
@@ -978,21 +1045,58 @@
                 await handleUpdate('maintenance_records', record.id, { updates: methods.arrayUnion(newUpdate) });
             };
 
-            // FIX: Maintenance report generation logic added
+            const generateFormattedMaintReport = (selectedRecords) => {
+                let text = "【メンテ報告まとめ】\n━━━━━━━━━━━━\n";
+                selectedRecords.forEach((r, idx) => {
+                    text += `■ ${r.date} (${r.facility})\n`;
+                    
+                    // 写真があるかチェック（メインまたはアップデート内）
+                    const hasImages = (r.images && r.images.length > 0) || (r.updates && r.updates.some(u => u.images && u.images.length > 0));
+                    if (hasImages) {
+                        text += "【写真】\n";
+                    }
+                    
+                    text += `${r.task}\n`;
+                    
+                    if (r.updates && r.updates.length > 0) {
+                        r.updates.forEach(u => {
+                            text += ` └追記: ${u.comment}\n`;
+                        });
+                    }
+                    
+                    if (idx < selectedRecords.length - 1) {
+                        text += "--------------------\n";
+                    }
+                });
+                return text;
+            };
+
             const handleGenerateLineReport = () => {
                 const selected = records.filter(r => selectedMaintIds.has(r.id));
-                let text = "メンテナンス報告です\n\n";
-                selected.forEach(r => {
-                    text += `【${r.facility}】${r.task}\n`;
-                    if (r.updates && r.updates.length > 0) {
-                        r.updates.forEach(u => text += ` └追記: ${u.comment}\n`);
-                    }
-                    text += `(担当: ${r.staff})\n\n`;
-                });
+                if (selected.length === 0) return;
+                const text = generateFormattedMaintReport(selected);
                 copyToClipboard(text, "LINE報告文をコピーしました！");
                 setIsSelectionMode(false);
                 setSelectedMaintIds(new Set());
             };
+
+            const handleBulkCopyByDate = async (data) => {
+                const dateStr = data.date;
+                const filtered = records.filter(r => r.date === dateStr);
+                if (filtered.length === 0) {
+                    setToastMessage("該当日の報告はありませんでした");
+                    setTimeout(() => setToastMessage(null), 3000);
+                    return;
+                }
+                const text = generateFormattedMaintReport(filtered);
+                copyToClipboard(text, `${dateStr} の報告 ${filtered.length}件 をコピーしました！`);
+                setShowBulkCopyModal(false);
+            };
+
+            const dayDetailBookings = useMemo(() => {
+                if (!selectedDayStr) return [];
+                return bookings.filter(b => selectedDayStr >= b.startDate && selectedDayStr <= b.endDate);
+            }, [selectedDayStr, bookings]);
 
             return (
                 <div className="min-h-screen pb-24 overflow-x-hidden bg-slate-50 font-black text-left text-slate-900">
@@ -1004,11 +1108,65 @@
                                 {activeTab === 'shift' && <ShiftSection shifts={shifts} onOpenAdd={() => { setSelectedShiftDate(null); setShowShiftBulk(true); }} onDelete={id => handleDelete('shifts', id)} onEdit={(date) => { setSelectedShiftDate(date); setShowShiftBulk(true); }} />}
                                 {activeTab === 'maintenance' && (
                                     <div className="space-y-6 text-left">
-                                        <div className="flex justify-between items-center px-1"><h2 className="text-sm text-slate-400 italic font-black">{isSelectionMode ? "項目を選択中..." : (showArchive ? "アーカイブ" : "最近の報告")}</h2><div className="flex gap-2">
-                                                <button onClick={() => { setIsSelectionMode(!isSelectionMode); setSelectedMaintIds(new Set()); }} className={`${isSelectionMode ? 'bg-slate-200 text-slate-600' : 'bg-emerald-500 text-white'} text-[10px] px-3 py-2 rounded-full flex items-center gap-1 font-black shadow-sm transition-all text-left`}><Icon name={isSelectionMode ? "X" : "MessageCircle"} size={12} />{isSelectionMode ? "取消" : "LINE報告"}</button>{!isSelectionMode && <button onClick={() => setShowAddMaintenance(true)} className="bg-indigo-600 text-white text-[10px] px-4 py-2 rounded-full shadow-md flex items-center gap-1 font-black"><Icon name="Plus" size={12} /> 報告</button>}</div></div>
-                                        <div className="relative px-1 text-left"><Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="内容を検索..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black shadow-sm outline-none text-left" value={maintenanceSearch} onChange={e => setMaintenanceSearch(e.target.value)} /></div>
-                                        <MaintenanceCardList records={records} selectedFacility={selectedFacility} maintenanceSearch={maintenanceSearch} showArchive={showArchive} selectionMode={isSelectionMode} selectedMaintIds={selectedMaintIds} onToggleSelection={(id) => { const n = new Set(selectedMaintIds); if(n.has(id)) n.delete(id); else n.add(id); setSelectedMaintIds(n); }} onEdit={setEditingMaintenanceRecord} onAddUpdate={setShowAddUpdate} onDelete={id => handleDelete('maintenance_records', id)} onImageClick={setSelectedImage} />
-                                        {!isSelectionMode && <button onClick={() => setShowArchive(!showArchive)} className="w-full py-4 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black shadow-sm text-left">{showArchive ? "最新の10件を表示" : "すべての履歴を見る"}</button>}
+                                        <div className="flex flex-col gap-3 px-1">
+                                            <div className="flex justify-between items-center">
+                                                <h2 className="text-sm text-slate-400 italic font-black">{isSelectionMode ? "報告する項目を選択中" : (showArchive ? "アーカイブ" : "最近の報告")}</h2>
+                                                {isSelectionMode ? (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => { setIsSelectionMode(false); setSelectedMaintIds(new Set()); }} className="bg-slate-200 text-slate-600 text-[10px] px-3 py-2 rounded-full flex items-center gap-1 font-black shadow-sm transition-all"><Icon name="X" size={12} />取消</button>
+                                                        <button onClick={handleGenerateLineReport} disabled={selectedMaintIds.size === 0} className="bg-emerald-500 text-white text-[10px] px-4 py-2 rounded-full flex items-center gap-1 font-black shadow-lg shadow-emerald-200 active:scale-95 disabled:bg-slate-300 disabled:shadow-none transition-all"><Icon name="Copy" size={12} />選択項目をコピー ({selectedMaintIds.size})</button>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => setIsSelectionMode(true)} className="bg-emerald-500 text-white text-[10px] px-3 py-2 rounded-full flex items-center gap-1 font-black shadow-sm active:scale-95 transition-all"><Icon name="MessageCircle" size={12} />選択コピー</button>
+                                                        <button onClick={() => setShowBulkCopyModal(true)} className="bg-sky-500 text-white text-[10px] px-3 py-2 rounded-full flex items-center gap-1 font-black shadow-sm active:scale-95 transition-all"><Icon name="Calendar" size={12} />日付指定コピー</button>
+                                                        <button onClick={() => setShowAddMaintenance(true)} className="bg-indigo-600 text-white text-[10px] px-4 py-2 rounded-full shadow-md flex items-center gap-1 font-black active:scale-95 transition-all"><Icon name="Plus" size={12} />報告</button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            
+                                            {/* Advanced Filter Area */}
+                                            <div className="space-y-2">
+                                                <div className="relative text-left">
+                                                    <Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input type="text" placeholder="キーワードで内容を検索..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black shadow-sm outline-none text-left" value={maintenanceSearch} onChange={e => setMaintenanceSearch(e.target.value)} />
+                                                </div>
+                                                <div className="flex items-center gap-3 px-2 py-2 bg-slate-100/50 rounded-2xl border border-slate-200/50">
+                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                        <Icon name="History" size={12} className="text-indigo-500" />
+                                                        <span className="text-[10px] text-slate-500 font-black">日付で探す:</span>
+                                                    </div>
+                                                    <input 
+                                                        type="date" 
+                                                        value={maintenanceDateFilter} 
+                                                        onChange={e => setMaintenanceDateFilter(e.target.value)}
+                                                        className="bg-transparent text-[11px] font-black outline-none flex-1 text-slate-700" 
+                                                    />
+                                                    {maintenanceDateFilter && (
+                                                        <button onClick={() => setMaintenanceDateFilter('')} className="bg-slate-200 p-1 rounded-full text-slate-500">
+                                                            <Icon name="X" size={10} strokeWidth={3} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <MaintenanceCardList 
+                                            records={records} 
+                                            selectedFacility={selectedFacility} 
+                                            maintenanceSearch={maintenanceSearch} 
+                                            maintenanceDateFilter={maintenanceDateFilter}
+                                            showArchive={showArchive} 
+                                            selectionMode={isSelectionMode} 
+                                            selectedMaintIds={selectedMaintIds} 
+                                            onToggleSelection={(id) => { const n = new Set(selectedMaintIds); if(n.has(id)) n.delete(id); else n.add(id); setSelectedMaintIds(n); }} 
+                                            onEdit={setEditingMaintenanceRecord} 
+                                            onAddUpdate={setShowAddUpdate} 
+                                            onDelete={id => handleDelete('maintenance_records', id)} 
+                                            onImageClick={setSelectedImage} 
+                                        />
+                                        
+                                        {(!isSelectionMode && !maintenanceDateFilter) && <button onClick={() => setShowArchive(!showArchive)} className="w-full py-4 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black shadow-sm text-left">{showArchive ? "最新の10件を表示" : "すべての履歴を見る"}</button>}
                                     </div>
                                 )}
                                 {activeTab === 'inventory' && <InventorySection items={inventoryItems} onOpenAdd={() => setShowAddInventory(true)} onEdit={setEditingInventoryItem} onDelete={id => handleDelete('inventory', id)} onUpdateStock={handleUpdateStock} onShowHistory={setShowInventoryHistory} />}
@@ -1020,30 +1178,30 @@
                     {toastMessage && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[3000] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl text-xs font-black animate-in fade-in tracking-tight">{toastMessage}</div>}
                     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t px-2 py-3 flex justify-around items-center z-40 shadow-lg font-black"><NavItem active={activeTab === 'schedule'} iconName="Bed" label="宿泊" onClick={() => setActiveTab('schedule')} /><NavItem active={activeTab === 'shift'} iconName="Calendar" label="シフト" onClick={() => setActiveTab('shift')} /><NavItem active={activeTab === 'maintenance'} iconName="Wrench" label="メンテ" onClick={() => setActiveTab('maintenance')} /><NavItem active={activeTab === 'inventory'} iconName="Package" label="備品" onClick={() => setActiveTab('inventory')} /><NavItem active={activeTab === 'manual'} iconName="BookOpen" label="マニュアル" onClick={() => setActiveTab('manual')} /></nav>
 
-                    {/* LINE Report Selector Modal */}
+                    {/* Modals */}
                     {showLineReportSelector && (
                         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[2000] flex items-end sm:items-center justify-center p-4 font-black text-left">
                             <div className="bg-white w-full max-sm:max-h-[90vh] max-w-sm rounded-[2.5rem] p-6 shadow-2xl overflow-y-auto animate-in slide-in-from-bottom-5">
                                 <div className="flex justify-between items-center mb-6 text-left"><h3 className="text-lg font-black text-slate-800 italic">報告する施設を選択</h3><button onClick={() => { setShowLineReportSelector(false); setSelectedReportBookingIds(new Set()); }} className="p-2 text-slate-400 font-black">✕</button></div>
                                 <div className="space-y-3 mb-8 max-h-[50vh] overflow-y-auto no-scrollbar text-left">
-                                    {bookings.filter(b => new Date().toLocaleDateString('sv-SE') >= b.startDate && new Date().toLocaleDateString('sv-SE') <= b.endDate).map(b => (
-                                        <button key={b.id} onClick={() => toggleReportSelection(b.id)} className={`w-full p-4 border rounded-2xl flex items-center justify-between transition-all ${selectedReportBookingIds.has(b.id) ? 'bg-indigo-50 border-indigo-600 shadow-md ring-2 ring-indigo-600/10' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
-                                            <div className="flex items-center gap-3 text-left">
-                                                <span className="w-3 h-3 rounded-full" style={{backgroundColor: FACILITY_COLORS[b.facility]}}></span>
-                                                <div className="text-left"><div className="text-xs font-black text-slate-400">{b.facility} {b.checkedOutAt && " (OUT)"}</div><div className="text-sm font-black text-slate-700">{b.guestName}様</div></div>
-                                            </div>
-                                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${selectedReportBookingIds.has(b.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200'}`}>{selectedReportBookingIds.has(b.id) && <Icon name="Check" size={12} strokeWidth={4} />}</div>
-                                        </button>
-                                    ))}
+                                    {bookings.filter(b => { const todayStr = new Date().toLocaleDateString('sv-SE'); return todayStr >= b.startDate && todayStr <= b.endDate; }).map(b => {
+                                        const todayStr = new Date().toLocaleDateString('sv-SE'); const isOUT = b.endDate === todayStr; const isIN = b.startDate === todayStr; const isSTAY = todayStr > b.startDate && todayStr < b.endDate; const statusStr = isOUT ? "OUT" : isIN ? "IN" : isSTAY ? "STAY" : "";
+                                        return (
+                                            <button key={b.id} onClick={() => toggleReportSelection(b.id)} className={`w-full p-4 border rounded-2xl flex items-center justify-between transition-all ${selectedReportBookingIds.has(b.id) ? 'bg-indigo-50 border-indigo-600 shadow-md ring-2 ring-indigo-600/10' : 'bg-slate-50 border-slate-100 opacity-60'}`}>
+                                                <div className="flex items-center gap-3 text-left">
+                                                    <span className="w-3 h-3 rounded-full" style={{backgroundColor: FACILITY_COLORS[b.facility]}}></span>
+                                                    <div className="text-left"><div className="text-xs font-black text-slate-400">{b.facility} ({statusStr})</div><div className="text-sm font-black text-slate-700">{b.guestName}様</div></div>
+                                                </div>
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${selectedReportBookingIds.has(b.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-slate-200'}`}>{selectedReportBookingIds.has(b.id) && <Icon name="Check" size={12} strokeWidth={4} />}</div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                <button disabled={selectedReportBookingIds.size === 0} onClick={handleBulkLineReport} className="w-full bg-emerald-500 text-white py-4 rounded-[1.5rem] shadow-xl flex items-center justify-center gap-3 font-black active:scale-95 transition-all disabled:bg-slate-200 disabled:shadow-none text-left">
-                                    <Icon name="MessageCircle" size={20} strokeWidth={3} />選んだ施設を報告する ({selectedReportBookingIds.size})
-                                </button>
+                                <button disabled={selectedReportBookingIds.size === 0} onClick={handleBulkLineReport} className="w-full bg-emerald-500 text-white py-4 rounded-[1.5rem] shadow-xl flex items-center justify-center gap-3 font-black active:scale-95 transition-all disabled:bg-slate-200 disabled:shadow-none text-left"><Icon name="MessageCircle" size={20} strokeWidth={3} />選んだ施設を報告する ({selectedReportBookingIds.size})</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Details Modal */}
                     {selectedDayStr && (
                         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[1000] flex items-center justify-center p-4 font-black text-slate-800 text-left">
                             <div className="bg-white w-full max-w-md rounded-[2.5rem] p-6 shadow-2xl animate-in zoom-in-95 text-left"><div className="flex justify-between items-center mb-6 text-left"><h3 className="text-xl font-black">{selectedDayStr.replace(/-/g, '/')} の詳細</h3><button onClick={() => setSelectedDayStr(null)} className="p-2 text-slate-400 bg-slate-100 rounded-full font-black">✕</button></div>
@@ -1072,7 +1230,7 @@
                         </div>
                     )}
 
-                    {/* Standard CRUD Modals */}
+                    {showBulkCopyModal && <AddModal title="日付指定一括コピー" onClose={() => setShowBulkCopyModal(false)} onSave={handleBulkCopyByDate} fields={[{ name: 'date', label: '一括抽出する日付', type: 'date', default: new Date().toLocaleDateString('sv-SE') }]} />}
                     {showAddBooking && <AddModal title="予約登録" onClose={() => setShowAddBooking(false)} onSave={d => handleSave('bookings', d)} fields={[{ name: 'facility', label: '施設', type: 'select', options: FACILITIES }, { name: 'guestName', label: 'ゲスト名', type: 'text' }, { name: 'people', label: '人数', type: 'number', default: 1 }, { name: 'startDate', label: 'IN日', type: 'date' }, { name: 'endDate', label: 'OUT日', type: 'date' }, { name: 'babyCrib', label: 'ベビーベッド', type: 'checkbox' }, { name: 'babyBath', label: 'ベビーバス', type: 'checkbox' }, { name: 'babyChair', label: 'ベビーチェア', type: 'checkbox' }, { name: 'luggage', label: '荷物預かり', type: 'checkbox' }, { name: 'notes', label: '備考', type: 'textarea', required: false }]} />}
                     {editingBooking && <AddModal title="予約編集" initialData={editingBooking} onClose={() => setEditingBooking(null)} onSave={d => handleUpdate('bookings', editingBooking.id, d)} fields={[{ name: 'facility', label: '施設', type: 'select', options: FACILITIES }, { name: 'guestName', label: 'ゲスト名', type: 'text' }, { name: 'people', label: '人数', type: 'number' }, { name: 'startDate', label: 'IN日', type: 'date' }, { name: 'endDate', label: 'OUT日', type: 'date' }, { name: 'babyCrib', label: 'ベビーベッド', type: 'checkbox' }, { name: 'babyBath', label: 'ベビーバス', type: 'checkbox' }, { name: 'babyChair', label: 'ベビーチェア', type: 'checkbox' }, { name: 'luggage', label: '荷物預かり', type: 'checkbox' }, { name: 'notes', label: '備考', type: 'textarea', required: false }]} />}
                     {showShiftBulk && <ShiftBulkModal date={selectedShiftDate || new Date().toLocaleDateString('sv-SE')} existingShifts={shifts.filter(s => s.date === (selectedShiftDate || new Date().toLocaleDateString('sv-SE')))} onClose={() => setShowShiftBulk(false)} onSave={handleSaveShiftBulk} />}
