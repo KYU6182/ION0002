@@ -50,16 +50,14 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, doc, onSnapshot, updateDoc, setDoc, deleteDoc, addDoc, serverTimestamp, arrayUnion, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const config = typeof __firebase_config !== 'undefined' 
-            ? JSON.parse(__firebase_config) 
-            : {
-                apiKey: "AIzaSyC6fH7zMawRWM4vPzJwGw5P91zx6eLvXMM",
-                authDomain: "mentt-a93f3.firebaseapp.com",
-                projectId: "mentt-a93f3",
-                storageBucket: "mentt-a93f3.firebasestorage.app",
-                messagingSenderId: "759567068296",
-                appId: "1:759567068296:web:93796f181aa221b425433d"
-            };
+const firebaseConfig = {
+  apiKey: "AIzaSyBbzFujP0P7ExZ9m_ofnUGwHvTSFFgC1Ks",
+  authDomain: "project-7549205985465687953.firebaseapp.com",
+  projectId: "project-7549205985465687953",
+  storageBucket: "project-7549205985465687953.firebasestorage.app",
+  messagingSenderId: "814748288068",
+  appId: "1:814748288068:web:9c34b5e0476eb4313ae811"
+};
 
         const app = initializeApp(config);
         const auth = getAuth(app);
@@ -1399,3 +1397,4 @@
     </script>
 </body>
 </html>
+
