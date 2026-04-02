@@ -30,6 +30,11 @@
         
         .shift-badge { font-size: 7px; font-weight: 900; padding: 1px 2px; border-radius: 4px; width: 92%; text-align: center; margin-bottom: 1px; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .shift-badge-indigo { background-color: #eef2ff; color: #6366f1; border: 1px solid #e0e7ff; }
+        
+        .selection-check { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
+        .counter-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.1s; }
+        .counter-btn:active { transform: scale(0.9); background-color: #f1f5f9; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 text-left">
@@ -174,11 +179,7 @@
         }
 
         function CheckInCounter({ booking, onUpdate }) {
-            const counts = {
-                men: booking?.menCount || 0,
-                women: booking?.womenCount || 0,
-                child: booking?.childCount || 0
-            };
+            const counts = { men: booking?.menCount || 0, women: booking?.womenCount || 0, child: booking?.childCount || 0 };
             const total = counts.men + counts.women + counts.child;
             const isCheckedOut = !!booking?.checkedOutAt;
 
@@ -188,29 +189,21 @@
                 onUpdate(booking.id, { [`${key}Count`]: newVal, checkInRecordedAt: new Date().toISOString() });
             };
 
-            const handleCheckOut = () => {
-                onUpdate(booking.id, { checkedOutAt: new Date().toISOString() });
-            };
+            const handleCheckOut = () => onUpdate(booking.id, { checkedOutAt: new Date().toISOString() });
 
             if (isCheckedOut) {
                 return (
                     <div className="mt-3 bg-slate-100 p-2 sm:p-3 rounded-2xl border border-slate-200 animate-in fade-in">
                         <div className="flex justify-between items-center mb-2">
-                            <span className="text-[10px] font-black text-slate-500 flex items-center gap-1">
-                                <Icon name="LogOut" size={10} /> チェックアウト済み
-                            </span>
-                            <span className="text-[10px] font-black text-slate-400">
-                                最終合計: <span className="text-slate-700 text-sm">{total}</span> 名
-                            </span>
+                            <span className="text-[10px] font-black text-slate-500 flex items-center gap-1"><Icon name="LogOut" size={10} /> チェックアウト済み</span>
+                            <span className="text-[10px] font-black text-slate-400">最終合計: <span className="text-slate-700 text-sm">{total}</span> 名</span>
                         </div>
                         <div className="flex flex-wrap gap-2 text-[10px] font-black text-slate-600 bg-white/50 p-2 rounded-xl border border-slate-50">
                             {counts.men > 0 && <span>男 {counts.men}</span>}
                             {counts.women > 0 && <span>女 {counts.women}</span>}
                             {counts.child > 0 && <span>子 {counts.child}</span>}
                         </div>
-                        <div className="mt-2 text-[8px] text-slate-400 text-right font-bold italic">
-                            完了日時: {formatDateTime(booking.checkedOutAt)}
-                        </div>
+                        <div className="mt-2 text-[8px] text-slate-400 text-right font-bold italic">完了日時: {formatDateTime(booking.checkedOutAt)}</div>
                     </div>
                 );
             }
@@ -218,19 +211,11 @@
             return (
                 <div className="mt-3 bg-indigo-50/50 p-2 sm:p-3 rounded-2xl border border-indigo-100/50">
                     <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-black text-indigo-600 flex items-center gap-1">
-                            <Icon name="CheckCircle" size={10} /> チェックイン人数
-                        </span>
-                        <span className="text-[10px] font-black text-slate-400">
-                            合計: <span className="text-indigo-600 text-sm">{total}</span> 名
-                        </span>
+                        <span className="text-[10px] font-black text-indigo-600 flex items-center gap-1"><Icon name="CheckCircle" size={10} /> チェックイン人数</span>
+                        <span className="text-[10px] font-black text-slate-400">合計: <span className="text-indigo-600 text-sm">{total}</span> 名</span>
                     </div>
                     <div className="flex justify-between items-center gap-1 sm:gap-2 mb-3">
-                        {[
-                            { label: '男', key: 'men', color: 'text-blue-600' },
-                            { label: '女', key: 'women', color: 'text-rose-600' },
-                            { label: '子', key: 'child', color: 'text-amber-600' }
-                        ].map(type => (
+                        {[{ label: '男', key: 'men', color: 'text-blue-600' }, { label: '女', key: 'women', color: 'text-rose-600' }, { label: '子', key: 'child', color: 'text-amber-600' }].map(type => (
                             <div key={type.key} className="flex flex-col items-center gap-1 bg-white p-1 rounded-xl flex-1 border border-indigo-50 shadow-sm min-w-0">
                                 <span className={`text-[9px] font-black ${type.color}`}>{type.label}</span>
                                 <div className="flex items-center gap-0.5 sm:gap-1">
@@ -241,48 +226,49 @@
                             </div>
                         ))}
                     </div>
-                    <button 
-                        onClick={handleCheckOut}
-                        className="w-full py-2 bg-white border border-rose-100 text-rose-500 text-[10px] font-black rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"
-                    >
-                        <Icon name="LogOut" size={10} /> チェックアウトする
-                    </button>
-                    {booking?.checkInRecordedAt && (
-                        <div className="mt-2 text-[8px] text-slate-400 text-right font-bold italic">
-                            最終更新: {formatDateTime(booking.checkInRecordedAt)}
-                        </div>
-                    )}
+                    <button onClick={handleCheckOut} className="w-full py-2 bg-white border border-rose-100 text-rose-500 text-[10px] font-black rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1"><Icon name="LogOut" size={10} /> チェックアウトする</button>
+                    {booking?.checkInRecordedAt && <div className="mt-2 text-[8px] text-slate-400 text-right font-bold italic">最終更新: {formatDateTime(booking.checkInRecordedAt)}</div>}
                 </div>
             );
         }
 
-        // --- ★直接入力対応の在庫コントロール ---
+        // --- ★遅延送信（Debounce）付きの直接入力＆プラスマイナスコントロール ---
         function StockInputControl({ item, onUpdate }) {
             const [val, setVal] = useState(item.stock);
+            const timeoutRef = useRef(null);
 
             useEffect(() => {
-                setVal(item.stock);
+                if (!timeoutRef.current) {
+                    setVal(item.stock);
+                }
             }, [item.stock]);
 
+            const triggerUpdate = (newVal) => {
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                timeoutRef.current = setTimeout(() => {
+                    const num = parseInt(newVal, 10);
+                    // 現在のFirebase上の値と違う場合のみ更新を発火する
+                    if (!isNaN(num) && num >= 0 && num !== Number(item.stock)) {
+                        onUpdate(item.id, num);
+                    }
+                    timeoutRef.current = null;
+                }, 600); // 0.6秒待ってから通信（連打対策）
+            };
+
             const handleBlur = () => {
-                const num = parseInt(val, 10);
-                if (!isNaN(num) && num >= 0 && num !== Number(item.stock)) {
-                    onUpdate(item.id, num);
-                } else {
-                    setVal(item.stock); // エラー時は元に戻す
-                }
+                triggerUpdate(val);
             };
 
             const handleKeyDown = (e) => {
                 if (e.key === 'Enter') {
-                    e.target.blur();
+                    e.target.blur(); // Blur時にUpdateが走る
                 }
             };
 
             const handleChangeBtn = (delta) => {
                 const num = Math.max(0, Number(val) + delta);
                 setVal(num);
-                onUpdate(item.id, num); // ボタンクリックは即座に反映
+                triggerUpdate(num);
             };
 
             return (
@@ -291,7 +277,10 @@
                     <input 
                         type="number" 
                         value={val} 
-                        onChange={e => setVal(e.target.value)} 
+                        onChange={e => {
+                            setVal(e.target.value);
+                            triggerUpdate(e.target.value);
+                        }} 
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
                         className="w-10 text-center bg-white border border-slate-200 rounded-lg py-1 text-sm font-black outline-none text-slate-800 shadow-sm" 
@@ -422,14 +411,7 @@
                                                         {f.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                                                     </select>
                                                     {f.name === 'staff' && formData[f.name] === '直接入力' && (
-                                                        <input 
-                                                            type="text" 
-                                                            placeholder="担当者名を入力" 
-                                                            className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-sm font-black outline-none animate-in slide-in-from-top-1" 
-                                                            value={formData.staff_manual} 
-                                                            onChange={e => handleInputChange('staff_manual', e.target.value)} 
-                                                            required 
-                                                        />
+                                                        <input type="text" placeholder="担当者名を入力" className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-3 text-sm font-black outline-none animate-in slide-in-from-top-1" value={formData.staff_manual} onChange={e => handleInputChange('staff_manual', e.target.value)} required />
                                                     )}
                                                 </div>
                                             ) : f.type === 'textarea' ? (
@@ -636,6 +618,8 @@
             );
         }
 
+        // --- Main Content Sections ---
+
         function MaintenanceCardList({ records, selectedFacility, maintenanceSearch, maintenanceDateFilter, showArchive, selectionMode, selectedMaintIds, onToggleSelection, onEdit, onAddUpdate, onDelete, onImageClick }) {
             const todayStr = new Date().toLocaleDateString('sv-SE');
             const [expandedDates, setExpandedDates] = useState(new Set([todayStr]));
@@ -743,7 +727,7 @@
                             <Icon name="Repeat" size={16} className={autoMode ? "text-indigo-500" : "text-slate-400"} />
                             <div className="flex flex-col">
                                 <span className="text-xs text-slate-700 font-black">在庫の自動連動</span>
-                                <span className="text-[9px] text-slate-400">{autoMode ? '補充時に出元の在庫を自動で減らします' : '連動せず個別で在庫を管理します'}</span>
+                                <span className="text-[9px] text-slate-400 leading-tight mt-0.5">{autoMode ? '補充時に出元の在庫を自動で減らします' : '連動せず個別で在庫を管理します'}</span>
                             </div>
                         </div>
                         <div className="flex items-center bg-slate-100 p-1 rounded-full shrink-0">
@@ -798,9 +782,320 @@
             );
         }
 
-        // (中略 - App関数以外は省略せずに全て記載)
-        // ManualSectionWrapperContainer, ShiftSection, ScheduleSectionContainer ... は前のコードと同じなので App関数の修正部分へ
+        function ManualSectionWrapperContainer({ manuals, selectedFacility, onOpenAdd, onCopy, onDelete, onEdit, onImageClick, appId }) {
+            const [activeType, setActiveType] = useState('manual'); 
+            const [facilityFilter, setFacilityFilter] = useState('すべて');
+            const [tagFilter, setTagFilter] = useState('すべて');
+            const [searchTerm, setSearchTerm] = useState('');
+            const filtered = useMemo(() => manuals.filter(m => { const matchType = m.type === activeType; const matchFacility = facilityFilter === 'すべて' || m.facility === facilityFilter; const matchTag = (activeType === 'trouble') ? true : (tagFilter === 'すべて' || m.tag === tagFilter); const matchGlobalFacility = selectedFacility === 'all' || m.facility === '共通' || m.facility === selectedFacility; const matchSearch = searchTerm === '' || (m?.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m?.content || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m?.solution || "").toLowerCase().includes(searchTerm.toLowerCase()); return matchType && matchFacility && matchTag && matchGlobalFacility && matchSearch; }), [manuals, activeType, facilityFilter, tagFilter, selectedFacility, searchTerm]);
+            return (
+                <div className="space-y-5 animate-in fade-in duration-300 text-left font-black pb-10">
+                    <div className="flex justify-center px-1"><button onClick={() => onOpenAdd(activeType)} className="w-full bg-indigo-600 text-white py-4 rounded-[2rem] shadow-lg flex items-center justify-center gap-2 font-black active:scale-95 transition-transform"><Icon name="Plus" size={20} />{activeType === 'trouble' ? 'トラブル事例を記録' : '新規情報を追加'}</button></div>
+                    <div className="flex bg-white p-1 rounded-2xl border shadow-sm mx-1"><button onClick={() => setActiveType('manual')} className={`flex-1 py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 ${activeType === 'manual' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="BookOpen" size={14} /> マニュアル</button><button onClick={() => setActiveType('faq')} className={`flex-1 py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 ${activeType === 'faq' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="MessageSquare" size={14} /> 質問集</button><button onClick={() => setActiveType('trouble')} className={`flex-1 py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 ${activeType === 'trouble' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="AlertCircle" size={14} /> トラブル履歴</button></div>
+                    <div className="px-1 relative text-slate-900"><Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="キーワード検索..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black shadow-sm outline-none text-slate-900" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
+                    <div className="space-y-2 px-1 text-slate-900"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-black pl-2">拠点フィルター</label><div className="flex gap-2 overflow-x-auto no-scrollbar py-1">{['すべて', ...MANUAL_FACILITIES].map(f => <button key={f} onClick={() => setFacilityFilter(f)} className={`px-4 py-2 rounded-full border text-[11px] whitespace-nowrap transition-all shadow-sm font-black ${facilityFilter === f ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-slate-100'}`}>{f}</button>)}</div></div>
+                    {activeType !== 'trouble' && (<div className="space-y-2 px-1 text-slate-900 text-left text-slate-900"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-black pl-2">カテゴリーフィルター</label><div className="flex gap-2 overflow-x-auto no-scrollbar py-1">{['すべて', ...MANUAL_TAGS].map(t => <button key={t} onClick={() => setTagFilter(t)} className={`px-4 py-2 rounded-xl border text-[11px] whitespace-nowrap font-black shadow-sm ${tagFilter === t ? 'bg-indigo-50 text-white border-indigo-500' : 'bg-white text-slate-400 border-slate-100'}`}>{t}</button>)}</div></div>)}
+                    <div className="grid gap-4 px-1">{filtered.map(m => (activeType === 'trouble' ? <TroubleCard key={m.id} record={m} onEdit={onEdit} onDelete={onDelete} onImageClick={onImageClick} /> : <ManualCard key={m.id} manual={m} onCopy={onCopy} onDelete={onDelete} onImageClick={onImageClick} appId={appId} />))}</div>
+                </div>
+            );
+        }
 
+        function ShiftSection({ shifts, onOpenAdd, onDelete, onEdit }) {
+            const [viewDate, setViewDate] = useState(new Date());
+            const year = viewDate.getFullYear();
+            const month = viewDate.getMonth();
+            const todayStr = new Date().toLocaleDateString('sv-SE');
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const todayShifts = useMemo(() => shifts.filter(s => s.date === todayStr), [shifts, todayStr]);
+
+            return (
+                <div className="space-y-6 animate-in fade-in duration-300 font-black text-left text-slate-900">
+                    <section className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
+                        <div className="flex justify-between items-center text-slate-900">
+                            <h2 className="text-xs text-slate-400 uppercase tracking-widest font-black flex items-center gap-2">
+                                <Icon name="Clock" size={14} color="#6366F1" strokeWidth={3} /> 今日のシフト明細
+                            </h2>
+                            <button onClick={() => onEdit(todayStr)} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full active:scale-95 transition-all">編集</button>
+                        </div>
+                        <div className="space-y-3">
+                            {TIME_SLOTS.map(slot => {
+                                const staffs = todayShifts.filter(s => s.timeSlot === slot).map(s => s.staff);
+                                return (
+                                    <div key={slot} className="flex items-center gap-4 py-1 border-b border-slate-50 last:border-none text-slate-900">
+                                        <span className="text-[10px] font-black text-indigo-400 bg-indigo-50 w-12 text-center py-1 rounded-lg shrink-0">{slot}</span>
+                                        <div className="flex flex-wrap gap-2 text-slate-900">
+                                            {staffs.length > 0 ? staffs.map((staff, idx) => (
+                                                <span key={idx} className="text-sm font-black text-slate-700">{staff}</span>
+                                            )) : <span className="text-[10px] text-slate-200 italic">勤務なし</span>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+
+                    <section className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 font-black">
+                        <div className="flex items-center justify-between mb-4 text-slate-900">
+                            <h2 className="flex items-center gap-2 text-slate-800 font-black"><Icon name="Calendar" size={18} color="#6366F1" /> {year}年 {month + 1}月</h2>
+                            <div className="flex gap-2 items-center text-slate-900">
+                                <button onClick={onOpenAdd} className="bg-indigo-600 text-white text-[10px] px-3 py-1.5 rounded-full shadow-md flex items-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="Plus" size={10} /> シフト一括</button>
+                                <div className="flex bg-slate-100 rounded-full px-1 py-0.5 ml-2 text-slate-900">
+                                    <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 text-slate-400"><Icon name="ChevronLeft" size={18} /></button>
+                                    <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 text-slate-400"><Icon name="ChevronRight" size={18} /></button>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-7 text-center text-[9px] font-black text-slate-300 mb-2 uppercase text-slate-900">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}</div>
+                        <div className="calendar-grid">
+                            {[...Array(firstDayIndex)].map((_, i) => <div key={`empty-${i}`} className="day-cell bg-slate-50/20"></div>)}
+                            {[...Array(daysInMonth)].map((_, i) => {
+                                const day = i + 1; 
+                                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; 
+                                const dayShifts = shifts.filter(s => s.date === dateStr);
+                                
+                                const sortedDayShifts = [...dayShifts]
+                                    .filter(s => s.staff !== "NONE")
+                                    .sort((a, b) => TIME_SLOTS.indexOf(a.timeSlot) - TIME_SLOTS.indexOf(b.timeSlot));
+
+                                const isHoliday = dayShifts.some(s => s.taniguchiHoliday);
+                                const isToday = dateStr === todayStr;
+                                return (
+                                    <div key={day} className={`day-cell ${isHoliday ? 'bg-rose-50/20' : ''}`} onClick={() => onEdit(dateStr)}>
+                                        <div className={`day-num font-black ${isToday ? 'bg-indigo-600 text-white shadow-md' : isHoliday ? 'text-rose-500' : 'text-slate-700'}`}>{day}</div>
+                                        <div className="w-full flex flex-col items-center gap-0.5 px-0.5 overflow-hidden">
+                                            {sortedDayShifts.map((s, idx) => (<div key={idx} className="shift-badge shift-badge-indigo">{s.staff}</div>))}
+                                            {isHoliday && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full mt-1"></div>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                </div>
+            );
+        }
+
+        function ScheduleSectionContainer({ selectedFacility, bookings, records, manuals, shifts, onOpenAdd, onOpenDetail, onLinkeyCheck, onUpdateBooking, onLineReport }) {
+            const today = new Date();
+            const todayStr = today.toLocaleDateString('sv-SE');
+            const todayMaint = useMemo(() => records.filter(r => formatDateTime(r.createdAt || r.date).includes("今日")), [records]);
+            const todayManuals = useMemo(() => manuals.filter(m => formatDateTime(m.updatedAt || m.createdAt).includes("今日")), [manuals]);
+            const todayShifts = useMemo(() => shifts.filter(s => s.date === todayStr), [shifts, todayStr]);
+
+            const [viewDate, setViewDate] = useState(new Date());
+            const year = viewDate.getFullYear(); const month = viewDate.getMonth();
+            const firstDayIndex = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            const highlights = useMemo(() => {
+                const base = bookings.filter(b => selectedFacility === 'all' || b.facility === selectedFacility);
+                return {
+                    out: base.filter(b => b.endDate === todayStr),
+                    in: base.filter(b => b.startDate === todayStr),
+                    stay: base.filter(b => todayStr > b.startDate && todayStr < b.endDate)
+                };
+            }, [bookings, todayStr, selectedFacility]);
+
+            const occupancyRates = useMemo(() => {
+                const results = {};
+                FACILITIES.forEach(f => {
+                    let bookedDays = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                        const isBooked = bookings.some(b => b.facility === f && dateStr >= b.startDate && dateStr < b.endDate);
+                        if (isBooked) bookedDays++;
+                    }
+                    results[f] = Math.round((bookedDays / daysInMonth) * 100);
+                });
+                return results;
+            }, [bookings, year, month, daysInMonth]);
+            
+            return (
+                <div className="space-y-6 animate-in fade-in duration-500 font-black text-left text-slate-900 max-w-full">
+                    {/* 上部セクション：PCでは2列並列に */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <section className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 space-y-4 overflow-hidden h-fit">
+                            <h2 className="text-xs text-slate-400 uppercase tracking-widest font-black flex items-center gap-2">
+                                <Icon name="Bell" size={14} color="#6366F1" strokeWidth={3} /> 本日の最新更新
+                            </h2>
+                            {(todayMaint.length === 0 && todayManuals.length === 0 && todayShifts.length === 0) ? (
+                                <p className="text-sm text-slate-300 italic font-bold py-2">本日の更新はありません</p>
+                            ) : (
+                                <div className="space-y-4 text-left">
+                                    {todayShifts.length > 0 && (
+                                        <div className="space-y-2 text-left">
+                                            <div className="flex justify-between items-center text-slate-900">
+                                                <span className="text-[11px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">今日のシフト {todayShifts.filter(s => s.staff !== 'NONE').length}件</span>
+                                            </div>
+                                            <div className="grid gap-1.5 text-left text-slate-900">
+                                                {TIME_SLOTS.map(slot => {
+                                                    const staffs = todayShifts.filter(s => s.timeSlot === slot && s.staff !== 'NONE').map(s => s.staff);
+                                                    if (staffs.length === 0) return null;
+                                                    return (
+                                                        <div key={slot} className="flex items-center gap-2 text-[10px] text-slate-600 text-slate-900">
+                                                            <span className="shrink-0 text-slate-300 w-8">{slot}</span>
+                                                            <span className="truncate font-bold">{staffs.join('、')}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {todayMaint.length > 0 && (
+                                        <div className="space-y-2 text-left">
+                                            <div className="flex justify-between items-center text-slate-900"><span className="text-[11px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">メンテ報告 {todayMaint.length}件</span></div>
+                                            <div className="grid gap-1.5 text-left text-slate-900">{todayMaint.slice(0, 3).map(r => (<div key={r.id} className="flex items-center gap-2 text-[10px] text-slate-600 text-slate-900"><span className="shrink-0 text-slate-300">{formatDateTime(r.createdAt || r.date).split(' ')[1]}</span><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: FACILITY_COLORS[r.facility]}}></span><span className="truncate font-bold">{r.task}</span></div>))}</div>
+                                        </div>
+                                    )}
+                                    {todayManuals.length > 0 && (
+                                        <div className="space-y-2 text-left">
+                                            <div className="flex justify-between items-center text-slate-900"><span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">マニュアル等 {todayManuals.length}件</span></div>
+                                            <div className="grid gap-1.5 text-left text-slate-900">{todayManuals.slice(0, 3).map(m => (<div key={m.id} className="flex items-center gap-2 text-[10px] text-slate-600 text-slate-900"><span className="shrink-0 text-slate-300">{formatDateTime(m.updatedAt || m.createdAt).split(' ')[1]}</span><span className={`text-[8px] font-black px-1.5 rounded border ${m.type==='trouble'?'border-rose-200 text-rose-500':'border-emerald-200 text-emerald-500'} shrink-0`}>{m.type === 'trouble' ? 'トラブル' : m.type === 'faq' ? '質問' : 'マニュアル'}</span><span className="truncate font-bold">{m.title}</span></div>))}</div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </section>
+
+                        <section className="space-y-4 text-left">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 px-1 text-slate-900">
+                                <h2 className="text-sm text-slate-400 uppercase italic font-black shrink-0">Today's Highlight</h2>
+                                <div className="flex flex-wrap gap-1.5 w-full sm:w-auto text-slate-900">
+                                    <button onClick={onLinkeyCheck} className="flex-1 sm:flex-none bg-sky-400 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="ClipboardCheck" size={12} /> リンキー</button>
+                                    <button onClick={onLineReport} className="flex-1 sm:flex-none bg-emerald-500 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="MessageCircle" size={12} /> LINE報告</button>
+                                    <button onClick={onOpenAdd} className="flex-1 sm:flex-none bg-indigo-600 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="Plus" size={12} /> 予約</button>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                {[
+                                    { title: 'OUT (チェックアウト)', data: highlights.out, color: 'text-rose-500', bg: 'bg-rose-50', icon: 'LogOut' },
+                                    { title: 'IN (チェックイン)', data: highlights.in, color: 'text-emerald-500', bg: 'bg-emerald-50', icon: 'LogIn' },
+                                    { title: 'STAY (滞在中)', data: highlights.stay, color: 'text-indigo-500', bg: 'bg-indigo-50', icon: 'Bed' }
+                                ].map(section => section.data.length > 0 && (
+                                    <div key={section.title} className="space-y-3">
+                                        <h3 className={`text-[10px] font-black ${section.color} px-3 flex items-center gap-1.5`}>
+                                            <Icon name={section.icon} size={12} strokeWidth={3} /> {section.title}
+                                        </h3>
+                                        <div className="grid gap-3 font-black max-w-full text-slate-900">
+                                            {section.data.map((b, i) => (
+                                                <div key={i} className="bg-white p-3 sm:p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-start gap-3 sm:gap-4 group text-left overflow-hidden text-slate-900 animate-in slide-in-from-left-2">
+                                                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center font-black text-[8px] sm:text-[9px] ${section.bg} ${section.color} shrink-0`}>
+                                                        <Icon name={section.icon} size={14} />
+                                                        <span>{section.title.split(' ')[0]}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0 font-black text-slate-900">
+                                                        <div className="flex items-center justify-between mb-0.5 text-slate-900">
+                                                            <div className="flex items-center gap-1 sm:gap-2">
+                                                                <span className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: FACILITY_COLORS[b.facility]}}></span>
+                                                                <span className="text-[10px] text-slate-400 font-black truncate">{b?.facility || '施設不明'} · {b?.people || 0}名</span>
+                                                            </div>
+                                                            <span className="text-[9px] font-bold text-slate-300 italic">{formatMMDD(b.startDate)}-{formatMMDD(b.endDate)}</span>
+                                                        </div>
+                                                        <div className="text-slate-800 text-base sm:text-lg font-black truncate">{b?.guestName || '未設定'} 様</div>
+                                                        <BookingOptions booking={b} />
+                                                        <CheckInCounter booking={b} onUpdate={onUpdateBooking} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                                {(highlights.out.length === 0 && highlights.in.length === 0 && highlights.stay.length === 0) && (
+                                    <div className="py-10 text-center text-slate-300 italic bg-white rounded-[2rem] border-dashed border-2 font-black text-slate-900">本日の稼働はありません</div>
+                                )}
+                            </div>
+                        </section>
+                    </div>
+
+                    {/* カレンダーコントロール部分 */}
+                    <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 font-black text-slate-900 mt-6 mb-4">
+                        <div className="flex items-center justify-between font-black text-slate-900">
+                            <h2 className="flex items-center gap-2 text-slate-800 font-black">
+                                <Icon name="Calendar" size={18} color="#6366F1" />{year}年 {month + 1}月
+                            </h2>
+                            <div className="flex gap-1 text-slate-900">
+                                <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 text-slate-400 active:scale-75 transition-transform"><Icon name="ChevronLeft" size={20} /></button>
+                                <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 text-slate-400 active:scale-75 transition-transform"><Icon name="ChevronRight" size={20} /></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 施設ごとのカレンダー（横並び／横スクロール対応） */}
+                    <div className="flex lg:grid lg:grid-cols-3 gap-4 lg:gap-6 overflow-x-auto pb-4 snap-x no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
+                        {FACILITIES.map(facility => {
+                            if (selectedFacility !== 'all' && facility !== selectedFacility) return null;
+                            return (
+                                <div key={facility} className="bg-white p-4 sm:p-5 rounded-[2.5rem] shadow-sm border border-slate-100 font-black text-slate-900 w-[85vw] sm:w-[340px] lg:w-auto shrink-0 snap-center">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-sm font-black flex items-center gap-2" style={{color: FACILITY_COLORS[facility]}}>
+                                            <span className="w-3 h-3 rounded-full" style={{backgroundColor: FACILITY_COLORS[facility]}}></span>
+                                            {facility}
+                                        </h3>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg text-slate-500 font-bold">
+                                                稼働率 <span className="text-xs font-black" style={{color: FACILITY_COLORS[facility]}}>{occupancyRates[facility]}%</span>
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-7 text-center text-[9px] font-black text-slate-300 mb-2 uppercase">
+                                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
+                                    </div>
+                                    <div className="calendar-grid">
+                                        {[...Array(firstDayIndex)].map((_, i) => <div key={`empty-${i}`} className="day-cell bg-slate-50/20"></div>)}
+                                        {[...Array(daysInMonth)].map((_, i) => {
+                                            const day = i + 1; 
+                                            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+                                            const dayBookings = bookings.filter(b => b.facility === facility && dateStr >= b.startDate && dateStr <= b.endDate);
+                                            const isToday = dateStr === todayStr;
+                                            return (
+                                                <div key={day} className="day-cell" onClick={() => onOpenDetail(dateStr)}>
+                                                    <div className={`day-num font-black ${isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'}`}>{day}</div>
+                                                    <div className="w-full flex flex-col items-center gap-0.5 px-0.5 overflow-hidden">
+                                                        {dayBookings.slice(0, 4).map(db => {
+                                                            const startD = new Date(db.startDate);
+                                                            const endD = new Date(db.endDate);
+                                                            const nights = Math.max(1, Math.round((endD - startD) / 86400000));
+                                                            
+                                                            const isIN = db.startDate === dateStr; 
+                                                            const isOUT = db.endDate === dateStr; 
+                                                            const isMiddle = dateStr > db.startDate && dateStr < db.endDate;
+                                                            const statusLabel = isIN ? `IN (${nights}泊)` : isOUT ? "OUT" : isMiddle ? `滞在中 (${nights}泊)` : "";
+                                                            const statusBg = isIN ? "bg-emerald-500" : isOUT ? "bg-rose-500" : "bg-indigo-500";
+                                                            if (!statusLabel) return null;
+                                                            return (
+                                                                <div key={db.id} className="booking-card" style={{borderLeftColor: FACILITY_COLORS[db.facility]}}>
+                                                                    <div className="booking-card-header">
+                                                                        <span className={`status-tag ${statusBg}`}>{statusLabel}</span>
+                                                                        <span className="guest-name">{db.guestName ? db.guestName : '未定'}</span>
+                                                                    </div>
+                                                                    {(db.babyCrib || db.babyBath || db.babyChair || db.luggage || db.notes) && (
+                                                                        <div className="option-tags">
+                                                                            {db?.babyCrib && <span className="opt-tag bg-amber-100 text-amber-700">ベッド</span>}
+                                                                            {db?.babyBath && <span className="opt-tag bg-sky-100 text-sky-700">バス</span>}
+                                                                            {db?.babyChair && <span className="opt-tag bg-emerald-100 text-emerald-700">チェア</span>}
+                                                                            {db?.luggage && <span className="opt-tag bg-purple-100 text-purple-700">荷物</span>}
+                                                                            {db?.notes && <span className="opt-tag bg-rose-100 text-rose-700">備考</span>}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                        {dayBookings.length > 4 && <div className="text-[5px] text-slate-300">+{dayBookings.length - 4}</div>}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        // --- Main App Component ---
         function App() {
             const [user, setUser] = useState(null);
             const [activeTab, setActiveTab] = useState('schedule');
@@ -811,6 +1106,8 @@
             const [manuals, setManuals] = useState([]);
             const [bookings, setBookings] = useState([]);
             const [shifts, setShifts] = useState([]);
+            
+            // 共通状態
             const [isSelectionMode, setIsSelectionMode] = useState(false);
             const [selectedMaintIds, setSelectedMaintIds] = useState(new Set());
             const [toastMessage, setToastMessage] = useState(null);
@@ -818,6 +1115,7 @@
             // ★自動連動のPOP通知用状態
             const [syncNotification, setSyncNotification] = useState(null);
 
+            // モーダル表示状態
             const [showAddMaintenance, setShowAddMaintenance] = useState(false);
             const [editingMaintenanceRecord, setEditingMaintenanceRecord] = useState(null);
             const [showAddUpdate, setShowAddUpdate] = useState(null);
@@ -872,6 +1170,14 @@
                 }, opts.error);
                 return () => { unsubM(); unsubI(); unsubIL(); unsubMa(); unsubB(); unsubS(); };
             }, [user]);
+
+            // 自動連動のPOP通知を数秒で消すタイマー
+            useEffect(() => {
+                if (syncNotification) {
+                    const timer = setTimeout(() => setSyncNotification(null), 5000);
+                    return () => clearTimeout(timer);
+                }
+            }, [syncNotification]);
 
             const handleUpdateBooking = async (id, data) => {
                 await methods.updateDoc(methods.doc(db, 'artifacts', appId, 'public', 'data', 'bookings', id), { ...data, updatedAt: methods.serverTimestamp() });
@@ -977,15 +1283,13 @@
                             await handleUpdate('inventory', sourceItem.id, { prevStock: sourceItem.stock, prevChecked: sourceItem.lastChecked || sourceItem.createdAt?.toDate().toISOString() || now, stock: newSourceStock, lastChecked: now });
                             await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), { itemId: sourceItem.id, itemName: sourceItem.name, location: sourceLocation, change: -change, stockAfter: newSourceStock, timestamp: methods.serverTimestamp(), userId: user.uid });
                             
-                            // ★ドデカいPOP通知を表示
+                            // ★POP通知を表示（Stateを更新するだけで表示される）
                             setSyncNotification({
                                 itemName: item.name,
                                 sourceLocation: sourceLocation,
                                 targetLocation: item.location,
                                 amount: change
                             });
-                            // 5秒後に自動で閉じる
-                            setTimeout(() => setSyncNotification(null), 5000);
                         } else {
                             // 引き落とし元が存在しない場合のエラー通知（トースト）
                             setToastMessage(`「${item.name}」を補充しました。（※${sourceLocation}に同名品がないため自動引き落としはされません）`);
@@ -1161,26 +1465,29 @@
                         )}
                     </main>
 
-                    {/* ★自動連動時に表示されるドデカいPOP通知 */}
+                    {/* ★自動連動時に表示されるコンパクトなPOP通知（スマホでも見切れない） */}
                     {syncNotification && (
-                        <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[4000] flex items-center justify-center p-4">
-                            <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-4 border-indigo-500 animate-in zoom-in slide-in-from-bottom-10 text-center max-w-sm w-full">
-                                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <Icon name="Repeat" size={32} strokeWidth={3} />
+                        <div className="fixed top-1/4 left-1/2 -translate-x-1/2 w-11/12 max-w-sm z-[4000]">
+                            <div className="bg-slate-800 text-white p-4 rounded-2xl shadow-2xl animate-in slide-in-from-top-4 flex items-start gap-3 border border-slate-700">
+                                <div className="w-8 h-8 bg-indigo-500/20 text-indigo-400 rounded-full flex items-center justify-center shrink-0 mt-1">
+                                    <Icon name="Repeat" size={16} strokeWidth={3} />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-800 mb-2">自動連動しました</h3>
-                                <p className="text-sm font-bold text-slate-600 leading-relaxed mb-6">
-                                    「{syncNotification.targetLocation}」への補充に伴い、<br/>
-                                    <span className="text-rose-500 font-black text-base border-b-2 border-rose-200 px-1 mx-1">{syncNotification.sourceLocation}</span> の<br/>
-                                    「{syncNotification.itemName}」を<br/>
-                                    自動で <span className="text-rose-500 font-black text-xl">{syncNotification.amount}個</span> 減らしました。
-                                </p>
-                                <button onClick={() => setSyncNotification(null)} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black active:scale-95 transition-all shadow-lg">確認しました</button>
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-black text-white mb-1">自動連動しました</h3>
+                                    <p className="text-[11px] font-bold text-slate-300 leading-relaxed">
+                                        <span className="text-white">{syncNotification.targetLocation}</span>に補充されたため、<br/>
+                                        <span className="text-rose-400">{syncNotification.sourceLocation}</span>の「{syncNotification.itemName}」を<br/>
+                                        自動で <span className="text-rose-400 text-sm font-black">{syncNotification.amount}個</span> 減らしました。
+                                    </p>
+                                </div>
+                                <button onClick={() => setSyncNotification(null)} className="text-slate-400 hover:text-white p-1 shrink-0 bg-slate-700/50 rounded-full">
+                                    <Icon name="X" size={14} />
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {toastMessage && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[3000] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-black animate-in fade-in tracking-tight whitespace-nowrap text-center leading-relaxed">{toastMessage}</div>}
+                    {toastMessage && <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-[3000] bg-slate-800 text-white px-4 py-3 rounded-2xl shadow-2xl text-xs font-black animate-in fade-in tracking-tight text-center leading-relaxed">{toastMessage}</div>}
                     
                     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t px-2 py-3 flex justify-around items-center z-40 shadow-lg font-black"><NavItem active={activeTab === 'schedule'} iconName="Bed" label="宿泊" onClick={() => setActiveTab('schedule')} /><NavItem active={activeTab === 'shift'} iconName="Calendar" label="シフト" onClick={() => setActiveTab('shift')} /><NavItem active={activeTab === 'maintenance'} iconName="Wrench" label="メンテ" onClick={() => setActiveTab('maintenance')} /><NavItem active={activeTab === 'inventory'} iconName="Package" label="備品" onClick={() => setActiveTab('inventory')} /><NavItem active={activeTab === 'manual'} iconName="BookOpen" label="マニュアル" onClick={() => setActiveTab('manual')} /></nav>
 
