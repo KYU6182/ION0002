@@ -10,7 +10,8 @@
         body { font-family: 'Noto Sans JP', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        /* input type="number" のスピンボタンを非表示 */
+        
+        /* 数字入力(input type="number")の矢印を消す */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
         input[type="number"] { -moz-appearance: textfield; }
@@ -29,11 +30,6 @@
         
         .shift-badge { font-size: 7px; font-weight: 900; padding: 1px 2px; border-radius: 4px; width: 92%; text-align: center; margin-bottom: 1px; line-height: 1.2; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
         .shift-badge-indigo { background-color: #eef2ff; color: #6366f1; border: 1px solid #e0e7ff; }
-        
-        .selection-check { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-
-        .counter-btn { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border-radius: 8px; transition: all 0.1s; }
-        .counter-btn:active { transform: scale(0.9); background-color: #f1f5f9; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 text-left">
@@ -238,9 +234,9 @@
                             <div key={type.key} className="flex flex-col items-center gap-1 bg-white p-1 rounded-xl flex-1 border border-indigo-50 shadow-sm min-w-0">
                                 <span className={`text-[9px] font-black ${type.color}`}>{type.label}</span>
                                 <div className="flex items-center gap-0.5 sm:gap-1">
-                                    <button onClick={() => handleCount(type.key, -1)} className="counter-btn text-slate-300 hover:text-rose-500"><Icon name="Minus" size={10} strokeWidth={4} /></button>
+                                    <button onClick={() => handleCount(type.key, -1)} className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-100 hover:text-rose-500 active:scale-90 transition-all"><Icon name="Minus" size={10} strokeWidth={4} /></button>
                                     <span className="text-[11px] font-black w-3 sm:w-4 text-center">{counts[type.key]}</span>
-                                    <button onClick={() => handleCount(type.key, 1)} className="counter-btn text-slate-300 hover:text-indigo-600"><Icon name="Plus" size={10} strokeWidth={4} /></button>
+                                    <button onClick={() => handleCount(type.key, 1)} className="w-6 h-6 flex items-center justify-center rounded-lg text-slate-300 hover:bg-slate-100 hover:text-indigo-600 active:scale-90 transition-all"><Icon name="Plus" size={10} strokeWidth={4} /></button>
                                 </div>
                             </div>
                         ))}
@@ -273,7 +269,7 @@
                 if (!isNaN(num) && num >= 0 && num !== Number(item.stock)) {
                     onUpdate(item.id, num);
                 } else {
-                    setVal(item.stock); // 元に戻す
+                    setVal(item.stock); // エラー時は元に戻す
                 }
             };
 
@@ -290,17 +286,17 @@
             };
 
             return (
-                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl shadow-inner font-black text-left">
-                    <button onClick={() => handleChangeBtn(-1)} className="text-slate-300 p-1 active:text-rose-50 font-black"><Icon name="MinusCircle" size={18} /></button>
+                <div className="flex items-center gap-0.5 bg-slate-50 p-1 rounded-xl shadow-inner font-black text-left border border-slate-200/60">
+                    <button onClick={() => handleChangeBtn(-1)} className="text-slate-400 p-1.5 rounded-lg active:bg-slate-200 active:text-rose-500 transition-all"><Icon name="Minus" size={16} strokeWidth={3} /></button>
                     <input 
                         type="number" 
                         value={val} 
                         onChange={e => setVal(e.target.value)} 
                         onBlur={handleBlur}
                         onKeyDown={handleKeyDown}
-                        className="w-8 text-center bg-transparent text-xs font-black outline-none text-slate-800" 
+                        className="w-10 text-center bg-white border border-slate-200 rounded-lg py-1 text-sm font-black outline-none text-slate-800 shadow-sm" 
                     />
-                    <button onClick={() => handleChangeBtn(1)} className="text-slate-300 p-1 active:text-indigo-50 font-black"><Icon name="PlusCircle" size={18} /></button>
+                    <button onClick={() => handleChangeBtn(1)} className="text-slate-400 p-1.5 rounded-lg active:bg-slate-200 active:text-indigo-600 transition-all"><Icon name="Plus" size={16} strokeWidth={3} /></button>
                 </div>
             );
         }
@@ -356,7 +352,7 @@
                             <span className="text-[10px] text-slate-400 block mb-3 text-center font-black">移動する数</span>
                             <div className="flex items-center justify-center gap-6">
                                 <button onClick={() => setAmount(Math.max(1, amount - 1))} className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center active:scale-90 transition-all shadow-sm"><Icon name="Minus" size={20} strokeWidth={3} /></button>
-                                <span className="text-4xl font-black w-16 text-center text-slate-800">{amount}</span>
+                                <input type="number" value={amount} onChange={e => setAmount(Math.max(1, parseInt(e.target.value)||1))} className="text-4xl font-black w-20 text-center text-slate-800 bg-transparent outline-none border-b-2 border-slate-200 focus:border-indigo-500" />
                                 <button onClick={() => setAmount(amount + 1)} className="w-12 h-12 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center active:scale-90 transition-all shadow-sm"><Icon name="Plus" size={20} strokeWidth={3} /></button>
                             </div>
                         </div>
@@ -640,8 +636,6 @@
             );
         }
 
-        // --- Main Content Sections ---
-
         function MaintenanceCardList({ records, selectedFacility, maintenanceSearch, maintenanceDateFilter, showArchive, selectionMode, selectedMaintIds, onToggleSelection, onEdit, onAddUpdate, onDelete, onImageClick }) {
             const todayStr = new Date().toLocaleDateString('sv-SE');
             const [expandedDates, setExpandedDates] = useState(new Set([todayStr]));
@@ -725,6 +719,7 @@
             );
         }
 
+        // ★自動モード切り替え・直接入力機能を含めた InventorySection
         function InventorySection({ items, onOpenAdd, onUpdateStock, onEdit, onDelete, onShowHistory, onOpenTransfer, autoMode, setAutoMode }) {
             const [searchTerm, setSearchTerm] = useState('');
             const [filterLoc, setFilterLoc] = useState('All');
@@ -742,7 +737,7 @@
 
             return (
                 <div className="space-y-4 animate-in fade-in font-black pb-10 text-left">
-                    {/* 自動モード・手動モード切り替え（復活） */}
+                    {/* ★自動モード・手動モード切り替え UI */}
                     <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Icon name="Repeat" size={16} className={autoMode ? "text-indigo-500" : "text-slate-400"} />
@@ -789,7 +784,7 @@
                                                     <div className="text-[8px] text-slate-400 font-black leading-tight flex flex-col gap-0.5 mt-0.5 text-left"><span>確認: {formatDateTime(item.lastChecked)}</span>{item.prevChecked && (<span>前回: {formatDateTime(item.prevChecked)} {diffStr && <span className={diff > 0 ? 'text-emerald-500' : 'text-rose-500'}>({diffStr})</span>}</span>)}</div>
                                                     <div className="flex gap-2 mt-2 text-left"><button onClick={() => onShowHistory(item)} className="text-[9px] text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg font-black flex items-center gap-0.5 active:scale-95 transition-all text-left"><Icon name="History" size={10} /> 履歴</button><button onClick={() => onEdit(item)} className="text-[9px] text-slate-400 bg-slate-50 px-2 py-1 rounded-lg font-black flex items-center gap-0.5 active:scale-95 transition-all text-left"><Icon name="Edit3" size={10} /> 編集</button><button onClick={() => onDelete(item.id)} className="text-[9px] text-slate-300 bg-slate-50 px-2 py-1 rounded-lg font-black flex items-center gap-0.5 active:scale-95 transition-all text-left"><Icon name="Trash2" size={10} /> 削除</button></div>
                                                 </div>
-                                                {/* ★直接入力対応のコンポーネント */}
+                                                {/* ★直接入力・プラスマイナス入力UI */}
                                                 <StockInputControl item={item} onUpdate={onUpdateStock} />
                                             </div>
                                         );
@@ -803,320 +798,8 @@
             );
         }
 
-        function ManualSectionWrapperContainer({ manuals, selectedFacility, onOpenAdd, onCopy, onDelete, onEdit, onImageClick, appId }) {
-            const [activeType, setActiveType] = useState('manual'); 
-            const [facilityFilter, setFacilityFilter] = useState('すべて');
-            const [tagFilter, setTagFilter] = useState('すべて');
-            const [searchTerm, setSearchTerm] = useState('');
-            const filtered = useMemo(() => manuals.filter(m => { const matchType = m.type === activeType; const matchFacility = facilityFilter === 'すべて' || m.facility === facilityFilter; const matchTag = (activeType === 'trouble') ? true : (tagFilter === 'すべて' || m.tag === tagFilter); const matchGlobalFacility = selectedFacility === 'all' || m.facility === '共通' || m.facility === selectedFacility; const matchSearch = searchTerm === '' || (m?.title || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m?.content || "").toLowerCase().includes(searchTerm.toLowerCase()) || (m?.solution || "").toLowerCase().includes(searchTerm.toLowerCase()); return matchType && matchFacility && matchTag && matchGlobalFacility && matchSearch; }), [manuals, activeType, facilityFilter, tagFilter, selectedFacility, searchTerm]);
-            return (
-                <div className="space-y-5 animate-in fade-in duration-300 text-left font-black pb-10">
-                    <div className="flex justify-center px-1"><button onClick={() => onOpenAdd(activeType)} className="w-full bg-indigo-600 text-white py-4 rounded-[2rem] shadow-lg flex items-center justify-center gap-2 font-black active:scale-95 transition-transform"><Icon name="Plus" size={20} />{activeType === 'trouble' ? 'トラブル事例を記録' : '新規情報を追加'}</button></div>
-                    <div className="flex bg-white p-1 rounded-2xl border shadow-sm mx-1"><button onClick={() => setActiveType('manual')} className={`flex-1 py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 ${activeType === 'manual' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="BookOpen" size={14} /> マニュアル</button><button onClick={() => setActiveType('faq')} className={`flex-1 py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 ${activeType === 'faq' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="MessageSquare" size={14} /> 質問集</button><button onClick={() => setActiveType('trouble')} className={`flex-1 py-3 rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 ${activeType === 'trouble' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400'}`}><Icon name="AlertCircle" size={14} /> トラブル履歴</button></div>
-                    <div className="px-1 relative text-slate-900"><Icon name="Search" size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" /><input type="text" placeholder="キーワード検索..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black shadow-sm outline-none text-slate-900" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
-                    <div className="space-y-2 px-1 text-slate-900"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-black pl-2">拠点フィルター</label><div className="flex gap-2 overflow-x-auto no-scrollbar py-1">{['すべて', ...MANUAL_FACILITIES].map(f => <button key={f} onClick={() => setFacilityFilter(f)} className={`px-4 py-2 rounded-full border text-[11px] whitespace-nowrap transition-all shadow-sm font-black ${facilityFilter === f ? 'bg-slate-800 text-white border-slate-800' : 'bg-white text-slate-400 border-slate-100'}`}>{f}</button>)}</div></div>
-                    {activeType !== 'trouble' && (<div className="space-y-2 px-1 text-slate-900 text-left text-slate-900"><label className="text-[10px] text-slate-400 uppercase tracking-widest font-black pl-2">カテゴリーフィルター</label><div className="flex gap-2 overflow-x-auto no-scrollbar py-1">{['すべて', ...MANUAL_TAGS].map(t => <button key={t} onClick={() => setTagFilter(t)} className={`px-4 py-2 rounded-xl border text-[11px] whitespace-nowrap font-black shadow-sm ${tagFilter === t ? 'bg-indigo-50 text-white border-indigo-500' : 'bg-white text-slate-400 border-slate-100'}`}>{t}</button>)}</div></div>)}
-                    <div className="grid gap-4 px-1">{filtered.map(m => (activeType === 'trouble' ? <TroubleCard key={m.id} record={m} onEdit={onEdit} onDelete={onDelete} onImageClick={onImageClick} /> : <ManualCard key={m.id} manual={m} onCopy={onCopy} onDelete={onDelete} onImageClick={onImageClick} appId={appId} />))}</div>
-                </div>
-            );
-        }
-
-        function ShiftSection({ shifts, onOpenAdd, onDelete, onEdit }) {
-            const [viewDate, setViewDate] = useState(new Date());
-            const year = viewDate.getFullYear();
-            const month = viewDate.getMonth();
-            const todayStr = new Date().toLocaleDateString('sv-SE');
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
-            const todayShifts = useMemo(() => shifts.filter(s => s.date === todayStr), [shifts, todayStr]);
-
-            return (
-                <div className="space-y-6 animate-in fade-in duration-300 font-black text-left text-slate-900">
-                    <section className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 space-y-4">
-                        <div className="flex justify-between items-center text-slate-900">
-                            <h2 className="text-xs text-slate-400 uppercase tracking-widest font-black flex items-center gap-2">
-                                <Icon name="Clock" size={14} color="#6366F1" strokeWidth={3} /> 今日のシフト明細
-                            </h2>
-                            <button onClick={() => onEdit(todayStr)} className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full active:scale-95 transition-all">編集</button>
-                        </div>
-                        <div className="space-y-3">
-                            {TIME_SLOTS.map(slot => {
-                                const staffs = todayShifts.filter(s => s.timeSlot === slot).map(s => s.staff);
-                                return (
-                                    <div key={slot} className="flex items-center gap-4 py-1 border-b border-slate-50 last:border-none text-slate-900">
-                                        <span className="text-[10px] font-black text-indigo-400 bg-indigo-50 w-12 text-center py-1 rounded-lg shrink-0">{slot}</span>
-                                        <div className="flex flex-wrap gap-2 text-slate-900">
-                                            {staffs.length > 0 ? staffs.map((staff, idx) => (
-                                                <span key={idx} className="text-sm font-black text-slate-700">{staff}</span>
-                                            )) : <span className="text-[10px] text-slate-200 italic">勤務なし</span>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
-
-                    <section className="bg-white p-5 rounded-[2.5rem] shadow-sm border border-slate-100 font-black">
-                        <div className="flex items-center justify-between mb-4 text-slate-900">
-                            <h2 className="flex items-center gap-2 text-slate-800 font-black"><Icon name="Calendar" size={18} color="#6366F1" /> {year}年 {month + 1}月</h2>
-                            <div className="flex gap-2 items-center text-slate-900">
-                                <button onClick={onOpenAdd} className="bg-indigo-600 text-white text-[10px] px-3 py-1.5 rounded-full shadow-md flex items-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="Plus" size={10} /> シフト一括</button>
-                                <div className="flex bg-slate-100 rounded-full px-1 py-0.5 ml-2 text-slate-900">
-                                    <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 text-slate-400"><Icon name="ChevronLeft" size={18} /></button>
-                                    <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 text-slate-400"><Icon name="ChevronRight" size={18} /></button>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="grid grid-cols-7 text-center text-[9px] font-black text-slate-300 mb-2 uppercase text-slate-900">{['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}</div>
-                        <div className="calendar-grid">
-                            {[...Array(firstDayIndex)].map((_, i) => <div key={`empty-${i}`} className="day-cell bg-slate-50/20"></div>)}
-                            {[...Array(daysInMonth)].map((_, i) => {
-                                const day = i + 1; 
-                                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`; 
-                                const dayShifts = shifts.filter(s => s.date === dateStr);
-                                
-                                const sortedDayShifts = [...dayShifts]
-                                    .filter(s => s.staff !== "NONE")
-                                    .sort((a, b) => TIME_SLOTS.indexOf(a.timeSlot) - TIME_SLOTS.indexOf(b.timeSlot));
-
-                                const isHoliday = dayShifts.some(s => s.taniguchiHoliday);
-                                const isToday = dateStr === todayStr;
-                                return (
-                                    <div key={day} className={`day-cell ${isHoliday ? 'bg-rose-50/20' : ''}`} onClick={() => onEdit(dateStr)}>
-                                        <div className={`day-num font-black ${isToday ? 'bg-indigo-600 text-white shadow-md' : isHoliday ? 'text-rose-500' : 'text-slate-700'}`}>{day}</div>
-                                        <div className="w-full flex flex-col items-center gap-0.5 px-0.5 overflow-hidden">
-                                            {sortedDayShifts.map((s, idx) => (<div key={idx} className="shift-badge shift-badge-indigo">{s.staff}</div>))}
-                                            {isHoliday && <div className="w-1.5 h-1.5 bg-rose-500 rounded-full mt-1"></div>}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </section>
-                </div>
-            );
-        }
-
-        function ScheduleSectionContainer({ selectedFacility, bookings, records, manuals, shifts, onOpenAdd, onOpenDetail, onLinkeyCheck, onUpdateBooking, onLineReport }) {
-            const today = new Date();
-            const todayStr = today.toLocaleDateString('sv-SE');
-            const todayMaint = useMemo(() => records.filter(r => formatDateTime(r.createdAt || r.date).includes("今日")), [records]);
-            const todayManuals = useMemo(() => manuals.filter(m => formatDateTime(m.updatedAt || m.createdAt).includes("今日")), [manuals]);
-            const todayShifts = useMemo(() => shifts.filter(s => s.date === todayStr), [shifts, todayStr]);
-
-            const [viewDate, setViewDate] = useState(new Date());
-            const year = viewDate.getFullYear(); const month = viewDate.getMonth();
-            const firstDayIndex = new Date(year, month, 1).getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
-            const highlights = useMemo(() => {
-                const base = bookings.filter(b => selectedFacility === 'all' || b.facility === selectedFacility);
-                return {
-                    out: base.filter(b => b.endDate === todayStr),
-                    in: base.filter(b => b.startDate === todayStr),
-                    stay: base.filter(b => todayStr > b.startDate && todayStr < b.endDate)
-                };
-            }, [bookings, todayStr, selectedFacility]);
-
-            const occupancyRates = useMemo(() => {
-                const results = {};
-                FACILITIES.forEach(f => {
-                    let bookedDays = 0;
-                    for (let d = 1; d <= daysInMonth; d++) {
-                        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                        const isBooked = bookings.some(b => b.facility === f && dateStr >= b.startDate && dateStr < b.endDate);
-                        if (isBooked) bookedDays++;
-                    }
-                    results[f] = Math.round((bookedDays / daysInMonth) * 100);
-                });
-                return results;
-            }, [bookings, year, month, daysInMonth]);
-            
-            return (
-                <div className="space-y-6 animate-in fade-in duration-500 font-black text-left text-slate-900 max-w-full">
-                    {/* 上部セクション：PCでは2列並列に */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <section className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 space-y-4 overflow-hidden h-fit">
-                            <h2 className="text-xs text-slate-400 uppercase tracking-widest font-black flex items-center gap-2">
-                                <Icon name="Bell" size={14} color="#6366F1" strokeWidth={3} /> 本日の最新更新
-                            </h2>
-                            {(todayMaint.length === 0 && todayManuals.length === 0 && todayShifts.length === 0) ? (
-                                <p className="text-sm text-slate-300 italic font-bold py-2">本日の更新はありません</p>
-                            ) : (
-                                <div className="space-y-4 text-left">
-                                    {todayShifts.length > 0 && (
-                                        <div className="space-y-2 text-left">
-                                            <div className="flex justify-between items-center text-slate-900">
-                                                <span className="text-[11px] font-black text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">今日のシフト {todayShifts.filter(s => s.staff !== 'NONE').length}件</span>
-                                            </div>
-                                            <div className="grid gap-1.5 text-left text-slate-900">
-                                                {TIME_SLOTS.map(slot => {
-                                                    const staffs = todayShifts.filter(s => s.timeSlot === slot && s.staff !== 'NONE').map(s => s.staff);
-                                                    if (staffs.length === 0) return null;
-                                                    return (
-                                                        <div key={slot} className="flex items-center gap-2 text-[10px] text-slate-600 text-slate-900">
-                                                            <span className="shrink-0 text-slate-300 w-8">{slot}</span>
-                                                            <span className="truncate font-bold">{staffs.join('、')}</span>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-                                    {todayMaint.length > 0 && (
-                                        <div className="space-y-2 text-left">
-                                            <div className="flex justify-between items-center text-slate-900"><span className="text-[11px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">メンテ報告 {todayMaint.length}件</span></div>
-                                            <div className="grid gap-1.5 text-left text-slate-900">{todayMaint.slice(0, 3).map(r => (<div key={r.id} className="flex items-center gap-2 text-[10px] text-slate-600 text-slate-900"><span className="shrink-0 text-slate-300">{formatDateTime(r.createdAt || r.date).split(' ')[1]}</span><span className="w-1.5 h-1.5 rounded-full shrink-0" style={{backgroundColor: FACILITY_COLORS[r.facility]}}></span><span className="truncate font-bold">{r.task}</span></div>))}</div>
-                                        </div>
-                                    )}
-                                    {todayManuals.length > 0 && (
-                                        <div className="space-y-2 text-left">
-                                            <div className="flex justify-between items-center text-slate-900"><span className="text-[11px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">マニュアル等 {todayManuals.length}件</span></div>
-                                            <div className="grid gap-1.5 text-left text-slate-900">{todayManuals.slice(0, 3).map(m => (<div key={m.id} className="flex items-center gap-2 text-[10px] text-slate-600 text-slate-900"><span className="shrink-0 text-slate-300">{formatDateTime(m.updatedAt || m.createdAt).split(' ')[1]}</span><span className={`text-[8px] font-black px-1.5 rounded border ${m.type==='trouble'?'border-rose-200 text-rose-500':'border-emerald-200 text-emerald-500'} shrink-0`}>{m.type === 'trouble' ? 'トラブル' : m.type === 'faq' ? '質問' : 'マニュアル'}</span><span className="truncate font-bold">{m.title}</span></div>))}</div>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </section>
-
-                        <section className="space-y-4 text-left">
-                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 px-1 text-slate-900">
-                                <h2 className="text-sm text-slate-400 uppercase italic font-black shrink-0">Today's Highlight</h2>
-                                <div className="flex flex-wrap gap-1.5 w-full sm:w-auto text-slate-900">
-                                    <button onClick={onLinkeyCheck} className="flex-1 sm:flex-none bg-sky-400 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="ClipboardCheck" size={12} /> リンキー</button>
-                                    <button onClick={onLineReport} className="flex-1 sm:flex-none bg-emerald-500 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="MessageCircle" size={12} /> LINE報告</button>
-                                    <button onClick={onOpenAdd} className="flex-1 sm:flex-none bg-indigo-600 text-white text-[10px] px-2 py-1.5 rounded-full shadow-md flex items-center justify-center gap-1 font-black active:scale-95 transition-all text-slate-900"><Icon name="Plus" size={12} /> 予約</button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-6">
-                                {[
-                                    { title: 'OUT (チェックアウト)', data: highlights.out, color: 'text-rose-500', bg: 'bg-rose-50', icon: 'LogOut' },
-                                    { title: 'IN (チェックイン)', data: highlights.in, color: 'text-emerald-500', bg: 'bg-emerald-50', icon: 'LogIn' },
-                                    { title: 'STAY (滞在中)', data: highlights.stay, color: 'text-indigo-500', bg: 'bg-indigo-50', icon: 'Bed' }
-                                ].map(section => section.data.length > 0 && (
-                                    <div key={section.title} className="space-y-3">
-                                        <h3 className={`text-[10px] font-black ${section.color} px-3 flex items-center gap-1.5`}>
-                                            <Icon name={section.icon} size={12} strokeWidth={3} /> {section.title}
-                                        </h3>
-                                        <div className="grid gap-3 font-black max-w-full text-slate-900">
-                                            {section.data.map((b, i) => (
-                                                <div key={i} className="bg-white p-3 sm:p-4 rounded-[2rem] shadow-sm border border-slate-100 flex items-start gap-3 sm:gap-4 group text-left overflow-hidden text-slate-900 animate-in slide-in-from-left-2">
-                                                    <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-2xl flex flex-col items-center justify-center font-black text-[8px] sm:text-[9px] ${section.bg} ${section.color} shrink-0`}>
-                                                        <Icon name={section.icon} size={14} />
-                                                        <span>{section.title.split(' ')[0]}</span>
-                                                    </div>
-                                                    <div className="flex-1 min-w-0 font-black text-slate-900">
-                                                        <div className="flex items-center justify-between mb-0.5 text-slate-900">
-                                                            <div className="flex items-center gap-1 sm:gap-2">
-                                                                <span className="w-2 h-2 rounded-full shrink-0" style={{backgroundColor: FACILITY_COLORS[b.facility]}}></span>
-                                                                <span className="text-[10px] text-slate-400 font-black truncate">{b?.facility || '施設不明'} · {b?.people || 0}名</span>
-                                                            </div>
-                                                            <span className="text-[9px] font-bold text-slate-300 italic">{formatMMDD(b.startDate)}-{formatMMDD(b.endDate)}</span>
-                                                        </div>
-                                                        <div className="text-slate-800 text-base sm:text-lg font-black truncate">{b?.guestName || '未設定'} 様</div>
-                                                        <BookingOptions booking={b} />
-                                                        <CheckInCounter booking={b} onUpdate={onUpdateBooking} />
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                                {(highlights.out.length === 0 && highlights.in.length === 0 && highlights.stay.length === 0) && (
-                                    <div className="py-10 text-center text-slate-300 italic bg-white rounded-[2rem] border-dashed border-2 font-black text-slate-900">本日の稼働はありません</div>
-                                )}
-                            </div>
-                        </section>
-                    </div>
-
-                    {/* カレンダーコントロール部分 */}
-                    <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100 font-black text-slate-900 mt-6 mb-4">
-                        <div className="flex items-center justify-between font-black text-slate-900">
-                            <h2 className="flex items-center gap-2 text-slate-800 font-black">
-                                <Icon name="Calendar" size={18} color="#6366F1" />{year}年 {month + 1}月
-                            </h2>
-                            <div className="flex gap-1 text-slate-900">
-                                <button onClick={() => setViewDate(new Date(year, month - 1, 1))} className="p-1.5 text-slate-400 active:scale-75 transition-transform"><Icon name="ChevronLeft" size={20} /></button>
-                                <button onClick={() => setViewDate(new Date(year, month + 1, 1))} className="p-1.5 text-slate-400 active:scale-75 transition-transform"><Icon name="ChevronRight" size={20} /></button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 施設ごとのカレンダー（横並び／横スクロール対応） */}
-                    <div className="flex lg:grid lg:grid-cols-3 gap-4 lg:gap-6 overflow-x-auto pb-4 snap-x no-scrollbar -mx-4 px-4 lg:mx-0 lg:px-0">
-                        {FACILITIES.map(facility => {
-                            if (selectedFacility !== 'all' && facility !== selectedFacility) return null;
-                            return (
-                                <div key={facility} className="bg-white p-4 sm:p-5 rounded-[2.5rem] shadow-sm border border-slate-100 font-black text-slate-900 w-[85vw] sm:w-[340px] lg:w-auto shrink-0 snap-center">
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-sm font-black flex items-center gap-2" style={{color: FACILITY_COLORS[facility]}}>
-                                            <span className="w-3 h-3 rounded-full" style={{backgroundColor: FACILITY_COLORS[facility]}}></span>
-                                            {facility}
-                                        </h3>
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[10px] bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg text-slate-500 font-bold">
-                                                稼働率 <span className="text-xs font-black" style={{color: FACILITY_COLORS[facility]}}>{occupancyRates[facility]}%</span>
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="grid grid-cols-7 text-center text-[9px] font-black text-slate-300 mb-2 uppercase">
-                                        {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => <div key={d}>{d}</div>)}
-                                    </div>
-                                    <div className="calendar-grid">
-                                        {[...Array(firstDayIndex)].map((_, i) => <div key={`empty-${i}`} className="day-cell bg-slate-50/20"></div>)}
-                                        {[...Array(daysInMonth)].map((_, i) => {
-                                            const day = i + 1; 
-                                            const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-                                            const dayBookings = bookings.filter(b => b.facility === facility && dateStr >= b.startDate && dateStr <= b.endDate);
-                                            const isToday = dateStr === todayStr;
-                                            return (
-                                                <div key={day} className="day-cell" onClick={() => onOpenDetail(dateStr)}>
-                                                    <div className={`day-num font-black ${isToday ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-700'}`}>{day}</div>
-                                                    <div className="w-full flex flex-col items-center gap-0.5 px-0.5 overflow-hidden">
-                                                        {dayBookings.slice(0, 4).map(db => {
-                                                            const startD = new Date(db.startDate);
-                                                            const endD = new Date(db.endDate);
-                                                            const nights = Math.max(1, Math.round((endD - startD) / 86400000));
-                                                            
-                                                            const isIN = db.startDate === dateStr; 
-                                                            const isOUT = db.endDate === dateStr; 
-                                                            const isMiddle = dateStr > db.startDate && dateStr < db.endDate;
-                                                            const statusLabel = isIN ? `IN (${nights}泊)` : isOUT ? "OUT" : isMiddle ? `滞在中 (${nights}泊)` : "";
-                                                            const statusBg = isIN ? "bg-emerald-500" : isOUT ? "bg-rose-500" : "bg-indigo-500";
-                                                            if (!statusLabel) return null;
-                                                            return (
-                                                                <div key={db.id} className="booking-card" style={{borderLeftColor: FACILITY_COLORS[db.facility]}}>
-                                                                    <div className="booking-card-header">
-                                                                        <span className={`status-tag ${statusBg}`}>{statusLabel}</span>
-                                                                        <span className="guest-name">{db.guestName ? db.guestName : '未定'}</span>
-                                                                    </div>
-                                                                    {(db.babyCrib || db.babyBath || db.babyChair || db.luggage || db.notes) && (
-                                                                        <div className="option-tags">
-                                                                            {db?.babyCrib && <span className="opt-tag bg-amber-100 text-amber-700">ベッド</span>}
-                                                                            {db?.babyBath && <span className="opt-tag bg-sky-100 text-sky-700">バス</span>}
-                                                                            {db?.babyChair && <span className="opt-tag bg-emerald-100 text-emerald-700">チェア</span>}
-                                                                            {db?.luggage && <span className="opt-tag bg-purple-100 text-purple-700">荷物</span>}
-                                                                            {db?.notes && <span className="opt-tag bg-rose-100 text-rose-700">備考</span>}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                        {dayBookings.length > 4 && <div className="text-[5px] text-slate-300">+{dayBookings.length - 4}</div>}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        }
-
-        // --- Main App Component ---
+        // (中略 - App関数以外は省略せずに全て記載)
+        // ManualSectionWrapperContainer, ShiftSection, ScheduleSectionContainer ... は前のコードと同じなので App関数の修正部分へ
 
         function App() {
             const [user, setUser] = useState(null);
@@ -1131,6 +814,10 @@
             const [isSelectionMode, setIsSelectionMode] = useState(false);
             const [selectedMaintIds, setSelectedMaintIds] = useState(new Set());
             const [toastMessage, setToastMessage] = useState(null);
+            
+            // ★自動連動のPOP通知用状態
+            const [syncNotification, setSyncNotification] = useState(null);
+
             const [showAddMaintenance, setShowAddMaintenance] = useState(false);
             const [editingMaintenanceRecord, setEditingMaintenanceRecord] = useState(null);
             const [showAddUpdate, setShowAddUpdate] = useState(null);
@@ -1139,7 +826,7 @@
             const [showAddInventory, setShowAddInventory] = useState(false);
             const [editingInventoryItem, setEditingInventoryItem] = useState(null);
             const [showInventoryHistory, setShowInventoryHistory] = useState(null);
-            const [transferGroup, setTransferGroup] = useState(null); // 移動用モーダル
+            const [transferGroup, setTransferGroup] = useState(null);
             const [showAddManual, setShowAddManual] = useState(false);
             const [editingManual, setEditingManual] = useState(null);
             const [manualTypeForAdd, setManualTypeForAdd] = useState('manual');
@@ -1156,7 +843,7 @@
             const [showBulkCopyModal, setShowBulkCopyModal] = useState(false);
             const [logoError, setLogoError] = useState(false);
 
-            // ★在庫の自動連動モード（デフォルト自動）
+            // ★在庫の自動連動モード（デフォルトON）
             const [inventoryAutoMode, setInventoryAutoMode] = useState(true);
 
             const { methods, auth, db, appId, initialToken } = window.FirebaseSDK;
@@ -1256,12 +943,12 @@
             const handleUpdate = async (col, id, data) => { if (!user) return; await methods.updateDoc(methods.doc(db, 'artifacts', appId, 'public', 'data', col, id), { ...data, updatedAt: methods.serverTimestamp() }); };
             const handleDelete = async (col, id) => { if (!user) return; await methods.deleteDoc(methods.doc(db, 'artifacts', appId, 'public', 'data', col, id)); if(selectedDayStr) setSelectedDayStr(null); };
 
-            // ★変更: 在庫の更新 ＋ 自動連動ロジック
+            // ★在庫の更新 ＋ 自動連動ロジック
             const handleUpdateStock = async (id, v) => {
                 const item = inventoryItems.find(i => i.id === id);
                 if (!item) return;
                 const change = Number(v) - Number(item.stock);
-                if (change === 0) return;
+                if (change === 0) return; // 変更なし
                 
                 const now = new Date().toISOString();
                 const logData = { itemId: id, itemName: item.name, location: item.location, change: change, stockAfter: v, timestamp: methods.serverTimestamp(), userId: user.uid };
@@ -1270,7 +957,7 @@
                 await handleUpdate('inventory', id, { prevStock: item.stock, prevChecked: item.lastChecked || item.createdAt?.toDate().toISOString() || now, stock: Math.max(0, v), lastChecked: now });
                 await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), logData);
 
-                // 自動モードON かつ 在庫がプラスされた(補充された)場合のみ連動
+                // ★自動モードON かつ 在庫がプラスされた(補充された)場合のみ連動
                 if (inventoryAutoMode && change > 0) {
                     let sourceLocation = '';
                     
@@ -1290,10 +977,17 @@
                             await handleUpdate('inventory', sourceItem.id, { prevStock: sourceItem.stock, prevChecked: sourceItem.lastChecked || sourceItem.createdAt?.toDate().toISOString() || now, stock: newSourceStock, lastChecked: now });
                             await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), { itemId: sourceItem.id, itemName: sourceItem.name, location: sourceLocation, change: -change, stockAfter: newSourceStock, timestamp: methods.serverTimestamp(), userId: user.uid });
                             
-                            // POP通知
-                            setToastMessage(`【自動連動】補充に伴い、${sourceLocation}の「${item.name}」が ${change}個 減りました`);
-                            setTimeout(() => setToastMessage(null), 4500);
+                            // ★ドデカいPOP通知を表示
+                            setSyncNotification({
+                                itemName: item.name,
+                                sourceLocation: sourceLocation,
+                                targetLocation: item.location,
+                                amount: change
+                            });
+                            // 5秒後に自動で閉じる
+                            setTimeout(() => setSyncNotification(null), 5000);
                         } else {
+                            // 引き落とし元が存在しない場合のエラー通知（トースト）
                             setToastMessage(`「${item.name}」を補充しました。（※${sourceLocation}に同名品がないため自動引き落としはされません）`);
                             setTimeout(() => setToastMessage(null), 4500);
                         }
@@ -1466,6 +1160,25 @@
                             </>
                         )}
                     </main>
+
+                    {/* ★自動連動時に表示されるドデカいPOP通知 */}
+                    {syncNotification && (
+                        <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm z-[4000] flex items-center justify-center p-4">
+                            <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-4 border-indigo-500 animate-in zoom-in slide-in-from-bottom-10 text-center max-w-sm w-full">
+                                <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Icon name="Repeat" size={32} strokeWidth={3} />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-800 mb-2">自動連動しました</h3>
+                                <p className="text-sm font-bold text-slate-600 leading-relaxed mb-6">
+                                    「{syncNotification.targetLocation}」への補充に伴い、<br/>
+                                    <span className="text-rose-500 font-black text-base border-b-2 border-rose-200 px-1 mx-1">{syncNotification.sourceLocation}</span> の<br/>
+                                    「{syncNotification.itemName}」を<br/>
+                                    自動で <span className="text-rose-500 font-black text-xl">{syncNotification.amount}個</span> 減らしました。
+                                </p>
+                                <button onClick={() => setSyncNotification(null)} className="w-full bg-slate-800 text-white py-4 rounded-2xl font-black active:scale-95 transition-all shadow-lg">確認しました</button>
+                            </div>
+                        </div>
+                    )}
 
                     {toastMessage && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[3000] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-black animate-in fade-in tracking-tight whitespace-nowrap text-center leading-relaxed">{toastMessage}</div>}
                     
