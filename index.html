@@ -10,8 +10,10 @@
         body { font-family: 'Noto Sans JP', sans-serif; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        /* input type="number" のスピンボタンを非表示 */
         input[type="number"]::-webkit-outer-spin-button,
         input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
         
         .calendar-grid { display: grid; grid-template-cols: repeat(7, 1fr); gap: 2px; background-color: #f1f5f9; border-radius: 20px; overflow: hidden; }
         .day-cell { min-height: 105px; height: auto; background-color: white; padding: 4px 1px 8px 1px; display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; transition: all 0.2s; overflow: hidden; }
@@ -258,9 +260,52 @@
             );
         }
 
-        // --- Modals ---
+        // --- ★直接入力対応の在庫コントロール ---
+        function StockInputControl({ item, onUpdate }) {
+            const [val, setVal] = useState(item.stock);
 
-        // 新しく追加した「移動（振替）」専用モーダル
+            useEffect(() => {
+                setVal(item.stock);
+            }, [item.stock]);
+
+            const handleBlur = () => {
+                const num = parseInt(val, 10);
+                if (!isNaN(num) && num >= 0 && num !== Number(item.stock)) {
+                    onUpdate(item.id, num);
+                } else {
+                    setVal(item.stock); // 元に戻す
+                }
+            };
+
+            const handleKeyDown = (e) => {
+                if (e.key === 'Enter') {
+                    e.target.blur();
+                }
+            };
+
+            const handleChangeBtn = (delta) => {
+                const num = Math.max(0, Number(val) + delta);
+                setVal(num);
+                onUpdate(item.id, num); // ボタンクリックは即座に反映
+            };
+
+            return (
+                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl shadow-inner font-black text-left">
+                    <button onClick={() => handleChangeBtn(-1)} className="text-slate-300 p-1 active:text-rose-50 font-black"><Icon name="MinusCircle" size={18} /></button>
+                    <input 
+                        type="number" 
+                        value={val} 
+                        onChange={e => setVal(e.target.value)} 
+                        onBlur={handleBlur}
+                        onKeyDown={handleKeyDown}
+                        className="w-8 text-center bg-transparent text-xs font-black outline-none text-slate-800" 
+                    />
+                    <button onClick={() => handleChangeBtn(1)} className="text-slate-300 p-1 active:text-indigo-50 font-black"><Icon name="PlusCircle" size={18} /></button>
+                </div>
+            );
+        }
+
+        // --- Modals ---
         function TransferModal({ group, onClose, onTransfer, locations }) {
             const [fromLoc, setFromLoc] = useState(group.items[0]?.location || '');
             const [toLoc, setToLoc] = useState('');
@@ -680,8 +725,7 @@
             );
         }
 
-        // ★追加した「移動用ボタン」を含めた InventorySection
-        function InventorySection({ items, onOpenAdd, onUpdateStock, onEdit, onDelete, onShowHistory, onOpenTransfer }) {
+        function InventorySection({ items, onOpenAdd, onUpdateStock, onEdit, onDelete, onShowHistory, onOpenTransfer, autoMode, setAutoMode }) {
             const [searchTerm, setSearchTerm] = useState('');
             const [filterLoc, setFilterLoc] = useState('All');
             const lowStockItems = useMemo(() => items.filter(item => Number(item.stock) <= Number(item.threshold || 5)), [items]);
@@ -698,6 +742,21 @@
 
             return (
                 <div className="space-y-4 animate-in fade-in font-black pb-10 text-left">
+                    {/* 自動モード・手動モード切り替え（復活） */}
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Icon name="Repeat" size={16} className={autoMode ? "text-indigo-500" : "text-slate-400"} />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-slate-700 font-black">在庫の自動連動</span>
+                                <span className="text-[9px] text-slate-400">{autoMode ? '補充時に出元の在庫を自動で減らします' : '連動せず個別で在庫を管理します'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center bg-slate-100 p-1 rounded-full shrink-0">
+                            <button onClick={() => setAutoMode(false)} className={`px-3 py-1.5 rounded-full text-[10px] transition-all font-black ${!autoMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}>手動</button>
+                            <button onClick={() => setAutoMode(true)} className={`px-3 py-1.5 rounded-full text-[10px] transition-all font-black ${autoMode ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>自動</button>
+                        </div>
+                    </div>
+
                     {lowStockItems.length > 0 && (<div className="bg-rose-50 border border-rose-200 rounded-[1.5rem] p-4 flex flex-col gap-2 shadow-sm text-slate-900 text-left"><div className="flex items-center gap-2 text-rose-600 font-black text-sm"><Icon name="AlertTriangle" size={18} /><span>補充が必要 ({lowStockItems.length}件)</span></div><div className="flex gap-2 overflow-x-auto no-scrollbar">{lowStockItems.map(item => (<div key={item.id} className="bg-white px-3 py-1.5 rounded-full text-[10px] text-rose-500 border border-rose-100 whitespace-nowrap font-black">{item.name} ({item.location})</div>))}</div></div>)}
                     
                     <div className="relative text-left text-slate-900"><Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="品目検索..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black shadow-sm outline-none text-left" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
@@ -713,7 +772,6 @@
                                         <h3 className="text-sm font-black truncate">{g.name}</h3>
                                         <div className="flex items-end justify-between w-full">
                                             <div className="text-[10px] text-slate-400 font-black text-left">在庫計: <span className="text-slate-800 text-lg">{g.total}</span></div>
-                                            {/* ★ここに追加した「移動用ボタン」 */}
                                             <button onClick={() => onOpenTransfer(g)} className="bg-indigo-50 text-indigo-600 border border-indigo-100 px-3 py-1 rounded-xl text-[10px] font-black flex items-center gap-1 active:scale-95 transition-all">
                                                 <Icon name="ArrowRightLeft" size={12} strokeWidth={3} /> 在庫を移動
                                             </button>
@@ -731,12 +789,8 @@
                                                     <div className="text-[8px] text-slate-400 font-black leading-tight flex flex-col gap-0.5 mt-0.5 text-left"><span>確認: {formatDateTime(item.lastChecked)}</span>{item.prevChecked && (<span>前回: {formatDateTime(item.prevChecked)} {diffStr && <span className={diff > 0 ? 'text-emerald-500' : 'text-rose-500'}>({diffStr})</span>}</span>)}</div>
                                                     <div className="flex gap-2 mt-2 text-left"><button onClick={() => onShowHistory(item)} className="text-[9px] text-indigo-500 bg-indigo-50 px-2 py-1 rounded-lg font-black flex items-center gap-0.5 active:scale-95 transition-all text-left"><Icon name="History" size={10} /> 履歴</button><button onClick={() => onEdit(item)} className="text-[9px] text-slate-400 bg-slate-50 px-2 py-1 rounded-lg font-black flex items-center gap-0.5 active:scale-95 transition-all text-left"><Icon name="Edit3" size={10} /> 編集</button><button onClick={() => onDelete(item.id)} className="text-[9px] text-slate-300 bg-slate-50 px-2 py-1 rounded-lg font-black flex items-center gap-0.5 active:scale-95 transition-all text-left"><Icon name="Trash2" size={10} /> 削除</button></div>
                                                 </div>
-                                                <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl shadow-inner font-black text-left">
-                                                    {/* シンプルな増減ボタン（移動ではない単なる使用や購入時の追加用） */}
-                                                    <button onClick={() => onUpdateStock(item.id, Number(item.stock)-1)} className="text-slate-300 p-1 active:text-rose-50 font-black text-left"><Icon name="MinusCircle" size={18} /></button>
-                                                    <span className="text-xs font-black w-6 text-center text-left">{item.stock}</span>
-                                                    <button onClick={() => onUpdateStock(item.id, Number(item.stock)+1)} className="text-slate-300 p-1 active:text-indigo-50 font-black text-left"><Icon name="PlusCircle" size={18} /></button>
-                                                </div>
+                                                {/* ★直接入力対応のコンポーネント */}
+                                                <StockInputControl item={item} onUpdate={onUpdateStock} />
                                             </div>
                                         );
                                     })}
@@ -1085,10 +1139,7 @@
             const [showAddInventory, setShowAddInventory] = useState(false);
             const [editingInventoryItem, setEditingInventoryItem] = useState(null);
             const [showInventoryHistory, setShowInventoryHistory] = useState(null);
-            
-            // ★追加: 転送（移動）モーダル用の状態
-            const [transferGroup, setTransferGroup] = useState(null);
-
+            const [transferGroup, setTransferGroup] = useState(null); // 移動用モーダル
             const [showAddManual, setShowAddManual] = useState(false);
             const [editingManual, setEditingManual] = useState(null);
             const [manualTypeForAdd, setManualTypeForAdd] = useState('manual');
@@ -1103,7 +1154,10 @@
             const [showLineReportSelector, setShowLineReportSelector] = useState(false);
             const [selectedReportBookingIds, setSelectedReportBookingIds] = useState(new Set());
             const [showBulkCopyModal, setShowBulkCopyModal] = useState(false);
-            const [logoError, setLogoError] = useState(false); // ロゴ読み込みエラー用
+            const [logoError, setLogoError] = useState(false);
+
+            // ★在庫の自動連動モード（デフォルト自動）
+            const [inventoryAutoMode, setInventoryAutoMode] = useState(true);
 
             const { methods, auth, db, appId, initialToken } = window.FirebaseSDK;
 
@@ -1202,57 +1256,73 @@
             const handleUpdate = async (col, id, data) => { if (!user) return; await methods.updateDoc(methods.doc(db, 'artifacts', appId, 'public', 'data', col, id), { ...data, updatedAt: methods.serverTimestamp() }); };
             const handleDelete = async (col, id) => { if (!user) return; await methods.deleteDoc(methods.doc(db, 'artifacts', appId, 'public', 'data', col, id)); if(selectedDayStr) setSelectedDayStr(null); };
 
-            // ★変更: 単なる在庫の増減（手動）用関数。自動連動のロジックは削除しました。
+            // ★変更: 在庫の更新 ＋ 自動連動ロジック
             const handleUpdateStock = async (id, v) => {
                 const item = inventoryItems.find(i => i.id === id);
                 if (!item) return;
                 const change = Number(v) - Number(item.stock);
                 if (change === 0) return;
+                
                 const now = new Date().toISOString();
                 const logData = { itemId: id, itemName: item.name, location: item.location, change: change, stockAfter: v, timestamp: methods.serverTimestamp(), userId: user.uid };
                 
+                // 元のアイテムを更新
                 await handleUpdate('inventory', id, { prevStock: item.stock, prevChecked: item.lastChecked || item.createdAt?.toDate().toISOString() || now, stock: Math.max(0, v), lastChecked: now });
                 await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), logData);
+
+                // 自動モードON かつ 在庫がプラスされた(補充された)場合のみ連動
+                if (inventoryAutoMode && change > 0) {
+                    let sourceLocation = '';
+                    
+                    // 各施設に補充 → エブリィが減る
+                    if (['天神', '博多', '清川'].includes(item.location)) {
+                        sourceLocation = 'エブリィ';
+                    } 
+                    // エブリィに補充 → 事務所が減る
+                    else if (item.location === 'エブリィ') {
+                        sourceLocation = '事務所';
+                    }
+
+                    if (sourceLocation) {
+                        const sourceItem = inventoryItems.find(i => i.location === sourceLocation && i.name === item.name);
+                        if (sourceItem) {
+                            const newSourceStock = Math.max(0, Number(sourceItem.stock) - change);
+                            await handleUpdate('inventory', sourceItem.id, { prevStock: sourceItem.stock, prevChecked: sourceItem.lastChecked || sourceItem.createdAt?.toDate().toISOString() || now, stock: newSourceStock, lastChecked: now });
+                            await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), { itemId: sourceItem.id, itemName: sourceItem.name, location: sourceLocation, change: -change, stockAfter: newSourceStock, timestamp: methods.serverTimestamp(), userId: user.uid });
+                            
+                            // POP通知
+                            setToastMessage(`【自動連動】補充に伴い、${sourceLocation}の「${item.name}」が ${change}個 減りました`);
+                            setTimeout(() => setToastMessage(null), 4500);
+                        } else {
+                            setToastMessage(`「${item.name}」を補充しました。（※${sourceLocation}に同名品がないため自動引き落としはされません）`);
+                            setTimeout(() => setToastMessage(null), 4500);
+                        }
+                    }
+                }
             };
 
-            // ★追加: 在庫を「移動（振替）」する関数
+            // 移動（振替）ボタン用処理
             const handleTransferStock = async (itemName, fromLoc, toLoc, amount) => {
                 if (!user) return;
                 const fromItem = inventoryItems.find(i => i.name === itemName && i.location === fromLoc);
                 const toItem = inventoryItems.find(i => i.name === itemName && i.location === toLoc);
                 const now = new Date().toISOString();
 
-                // 1. 移動元（From）の在庫を減らす
+                // 1. 移動元の在庫を減らす
                 if (fromItem) {
                     const newFromStock = Math.max(0, Number(fromItem.stock) - amount);
-                    await handleUpdate('inventory', fromItem.id, {
-                        prevStock: fromItem.stock, prevChecked: fromItem.lastChecked || fromItem.createdAt?.toDate().toISOString() || now,
-                        stock: newFromStock, lastChecked: now
-                    });
-                    await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), {
-                        itemId: fromItem.id, itemName, location: fromLoc, change: -amount, stockAfter: newFromStock, timestamp: methods.serverTimestamp(), userId: user.uid
-                    });
+                    await handleUpdate('inventory', fromItem.id, { prevStock: fromItem.stock, prevChecked: fromItem.lastChecked || fromItem.createdAt?.toDate().toISOString() || now, stock: newFromStock, lastChecked: now });
+                    await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), { itemId: fromItem.id, itemName, location: fromLoc, change: -amount, stockAfter: newFromStock, timestamp: methods.serverTimestamp(), userId: user.uid });
                 }
 
-                // 2. 移動先（To）の在庫を増やす
+                // 2. 移動先の在庫を増やす
                 if (toItem) {
                     const newToStock = Number(toItem.stock) + amount;
-                    await handleUpdate('inventory', toItem.id, {
-                        prevStock: toItem.stock, prevChecked: toItem.lastChecked || toItem.createdAt?.toDate().toISOString() || now,
-                        stock: newToStock, lastChecked: now
-                    });
-                    await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), {
-                        itemId: toItem.id, itemName, location: toLoc, change: amount, stockAfter: newToStock, timestamp: methods.serverTimestamp(), userId: user.uid
-                    });
+                    await handleUpdate('inventory', toItem.id, { prevStock: toItem.stock, prevChecked: toItem.lastChecked || toItem.createdAt?.toDate().toISOString() || now, stock: newToStock, lastChecked: now });
+                    await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), { itemId: toItem.id, itemName, location: toLoc, change: amount, stockAfter: newToStock, timestamp: methods.serverTimestamp(), userId: user.uid });
                 } else {
-                    // 移動先にデータが存在しない場合は新規作成する
-                    const newItemRef = await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), {
-                        name: itemName, location: toLoc, stock: amount, threshold: fromItem ? fromItem.threshold : 5,
-                        createdAt: methods.serverTimestamp(), updatedAt: methods.serverTimestamp(), lastChecked: now, userId: user.uid
-                    });
-                    await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), {
-                        itemId: newItemRef.id, itemName, location: toLoc, change: amount, stockAfter: amount, timestamp: methods.serverTimestamp(), userId: user.uid
-                    });
+                    const newItemRef = await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory'), { name: itemName, location: toLoc, stock: amount, threshold: fromItem ? fromItem.threshold : 5, createdAt: methods.serverTimestamp(), updatedAt: methods.serverTimestamp(), lastChecked: now, userId: user.uid });
+                    await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), { itemId: newItemRef.id, itemName, location: toLoc, change: amount, stockAfter: amount, timestamp: methods.serverTimestamp(), userId: user.uid });
                 }
 
                 setToastMessage(`「${itemName}」を ${fromLoc} から ${toLoc} へ ${amount}個 移動しました！`);
@@ -1391,14 +1461,14 @@
                                         {(!isSelectionMode && !maintenanceDateFilter) && <button onClick={() => setShowArchive(!showArchive)} className="w-full py-4 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black shadow-sm text-left">{showArchive ? "直近の報告のみ表示" : "すべての履歴を見る"}</button>}
                                     </div>
                                 )}
-                                {/* ★変更: onOpenTransfer にモーダルを開く処理を渡す */}
-                                {activeTab === 'inventory' && <InventorySection items={inventoryItems} onOpenAdd={() => setShowAddInventory(true)} onEdit={setEditingInventoryItem} onDelete={id => handleDelete('inventory', id)} onUpdateStock={handleUpdateStock} onShowHistory={setShowInventoryHistory} onOpenTransfer={setTransferGroup} />}
+                                {activeTab === 'inventory' && <InventorySection items={inventoryItems} onOpenAdd={() => setShowAddInventory(true)} onEdit={setEditingInventoryItem} onDelete={id => handleDelete('inventory', id)} onUpdateStock={handleUpdateStock} onShowHistory={setShowInventoryHistory} onOpenTransfer={setTransferGroup} autoMode={inventoryAutoMode} setAutoMode={setInventoryAutoMode} />}
                                 {activeTab === 'manual' && <ManualSectionWrapperContainer manuals={manuals} selectedFacility={selectedFacility} onOpenAdd={(type) => { setManualTypeForAdd(type); setShowAddManual(true); }} onCopy={txt => copyToClipboard(txt, "本文をコピーしました")} onDelete={id => handleDelete('manuals', id)} onEdit={setEditingManual} onImageClick={(imgs, idx) => setImageGallery({images: imgs, index: idx})} appId={appId} />}
                             </>
                         )}
                     </main>
 
-                    {toastMessage && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[3000] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl text-xs font-black animate-in fade-in tracking-tight whitespace-nowrap">{toastMessage}</div>}
+                    {toastMessage && <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[3000] bg-slate-800 text-white px-6 py-3 rounded-2xl shadow-2xl text-sm font-black animate-in fade-in tracking-tight whitespace-nowrap text-center leading-relaxed">{toastMessage}</div>}
+                    
                     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t px-2 py-3 flex justify-around items-center z-40 shadow-lg font-black"><NavItem active={activeTab === 'schedule'} iconName="Bed" label="宿泊" onClick={() => setActiveTab('schedule')} /><NavItem active={activeTab === 'shift'} iconName="Calendar" label="シフト" onClick={() => setActiveTab('shift')} /><NavItem active={activeTab === 'maintenance'} iconName="Wrench" label="メンテ" onClick={() => setActiveTab('maintenance')} /><NavItem active={activeTab === 'inventory'} iconName="Package" label="備品" onClick={() => setActiveTab('inventory')} /><NavItem active={activeTab === 'manual'} iconName="BookOpen" label="マニュアル" onClick={() => setActiveTab('manual')} /></nav>
 
                     {/* Image Viewer (Gallery) */}
@@ -1487,7 +1557,7 @@
                     {editingInventoryItem && <AddModal title="備品編集" initialData={editingInventoryItem} onClose={() => setEditingInventoryItem(null)} onSave={d => handleUpdate('inventory', editingInventoryItem.id, d)} hasImage fields={[{ name: 'location', label: '拠点', type: 'select', options: INVENTORY_LOCATIONS }, { name: 'name', label: '品名', type: 'text' }, { name: 'stock', label: '個数', type: 'number' }, { name: 'threshold', label: '補充アラート', type: 'number' }]} />}
                     {showInventoryHistory && <StockHistoryModal item={showInventoryHistory} logs={inventoryLogs.filter(l => l.itemId === showInventoryHistory.id)} onClose={() => setShowInventoryHistory(null)} />}
                     
-                    {/* ★追加: 転送用モーダル */}
+                    {/* 転送用モーダル */}
                     {transferGroup && <TransferModal group={transferGroup} locations={INVENTORY_LOCATIONS} onClose={() => setTransferGroup(null)} onTransfer={handleTransferStock} />}
 
                     {showAddManual && <AddModal title={manualTypeForAdd === 'trouble' ? "トラブル履歴を記録" : "マニュアル・FAQ投稿"} onClose={() => setShowAddManual(false)} onSave={d => handleSave('manuals', { ...d, type: manualTypeForAdd })} hasImage fields={manualTypeForAdd === 'trouble' ? [{ name: 'facility', label: '拠点', type: 'select', options: MANUAL_FACILITIES }, { name: 'date', label: '日時', type: 'datetime-local', default: new Date().toISOString().slice(0,16) }, { name: 'title', label: 'トラブル概要', type: 'text' }, { name: 'content', label: '内容詳細', type: 'textarea' }, { name: 'solution', label: '対処法', type: 'textarea' }] : [{ name: 'type', label: '種類', type: 'select', options: ['manual', 'faq'] }, { name: 'facility', label: '拠点', type: 'select', options: MANUAL_FACILITIES }, { name: 'tag', label: 'カテゴリー', type: 'select', options: MANUAL_TAGS }, { name: 'title', label: 'タイトル', type: 'text' }, { name: 'content', label: '内容', type: 'textarea' }]} />}
