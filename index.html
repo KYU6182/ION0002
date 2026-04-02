@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>民宿スタッフ専用ポータル</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap');
@@ -38,13 +37,11 @@
 <body class="bg-slate-50 text-slate-900 text-left">
     <div id="root"></div>
 
-    <!-- React & Babel -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
-    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -618,7 +615,7 @@
             );
         }
 
-        function InventorySection({ items, onOpenAdd, onUpdateStock, onEdit, onDelete, onShowHistory }) {
+        function InventorySection({ items, onOpenAdd, onUpdateStock, onEdit, onDelete, onShowHistory, autoMode, setAutoMode }) {
             const [searchTerm, setSearchTerm] = useState('');
             const [filterLoc, setFilterLoc] = useState('All');
             const lowStockItems = useMemo(() => items.filter(item => Number(item.stock) <= Number(item.threshold || 5)), [items]);
@@ -635,6 +632,21 @@
 
             return (
                 <div className="space-y-4 animate-in fade-in font-black pb-10 text-left">
+                    {/* 自動モード切替トグル */}
+                    <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <Icon name="Repeat" size={16} className={autoMode ? "text-indigo-500" : "text-slate-400"} />
+                            <div className="flex flex-col">
+                                <span className="text-xs text-slate-700 font-black">在庫の自動連動</span>
+                                <span className="text-[9px] text-slate-400">{autoMode ? '補充時に他拠点の在庫を自動で減らします' : '連動せず個別で在庫を管理します'}</span>
+                            </div>
+                        </div>
+                        <div className="flex items-center bg-slate-100 p-1 rounded-full shrink-0">
+                            <button onClick={() => setAutoMode(false)} className={`px-3 py-1.5 rounded-full text-[10px] transition-all font-black ${!autoMode ? 'bg-white text-slate-700 shadow-sm' : 'text-slate-400'}`}>手動</button>
+                            <button onClick={() => setAutoMode(true)} className={`px-3 py-1.5 rounded-full text-[10px] transition-all font-black ${autoMode ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400'}`}>自動</button>
+                        </div>
+                    </div>
+
                     {lowStockItems.length > 0 && (<div className="bg-rose-50 border border-rose-200 rounded-[1.5rem] p-4 flex flex-col gap-2 shadow-sm text-slate-900 text-left"><div className="flex items-center gap-2 text-rose-600 font-black text-sm"><Icon name="AlertTriangle" size={18} /><span>補充が必要 ({lowStockItems.length}件)</span></div><div className="flex gap-2 overflow-x-auto no-scrollbar">{lowStockItems.map(item => (<div key={item.id} className="bg-white px-3 py-1.5 rounded-full text-[10px] text-rose-500 border border-rose-100 whitespace-nowrap font-black">{item.name} ({item.location})</div>))}</div></div>)}
                     <div className="relative text-left text-slate-900"><Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-left" /><input type="text" placeholder="品目検索..." className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-black shadow-sm outline-none text-left" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} /></div>
                     <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 text-left text-slate-900">{['All', ...INVENTORY_LOCATIONS].map(l => (<button key={l} onClick={() => setFilterLoc(l)} className={`px-4 py-1.5 rounded-full border text-[11px] whitespace-nowrap transition-all font-black ${filterLoc === l ? 'bg-indigo-600 text-white shadow-md' : 'bg-white text-slate-400 border-slate-100'}`}>{l === 'All' ? '全拠点' : l}</button>))}</div>
@@ -1021,6 +1033,9 @@
             const [showBulkCopyModal, setShowBulkCopyModal] = useState(false);
             const [logoError, setLogoError] = useState(false); // ロゴ読み込みエラー用
 
+            // ★追加：在庫の自動連動モード（デフォルトON）
+            const [inventoryAutoMode, setInventoryAutoMode] = useState(true);
+
             const { methods, auth, db, appId, initialToken } = window.FirebaseSDK;
 
             useEffect(() => {
@@ -1128,35 +1143,38 @@
                 await handleUpdate('inventory', id, { prevStock: item.stock, prevChecked: item.lastChecked || item.createdAt?.toDate().toISOString() || now, stock: Math.max(0, v), lastChecked: now });
                 await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), logData);
 
-                // 天神・博多・清川で在庫がプラスされた場合、エブリィの同名備品から自動でマイナスする
-                if (['天神', '博多', '清川'].includes(item.location) && change > 0) {
-                    const everyItem = inventoryItems.find(i => i.location === 'エブリィ' && i.name === item.name);
-                    if (everyItem) {
-                        const newEveryStock = Math.max(0, Number(everyItem.stock) - change);
-                        const everyLogData = { itemId: everyItem.id, itemName: everyItem.name, location: everyItem.location, change: -change, stockAfter: newEveryStock, timestamp: methods.serverTimestamp(), userId: user.uid };
-                        await handleUpdate('inventory', everyItem.id, { prevStock: everyItem.stock, prevChecked: everyItem.lastChecked || everyItem.createdAt?.toDate().toISOString() || now, stock: newEveryStock, lastChecked: now });
-                        await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), everyLogData);
-                        setToastMessage(`「${item.name}」を補充しました。エブリィの在庫から自動で ${change}個 引かれました。`);
-                        setTimeout(() => setToastMessage(null), 4000);
-                    } else {
-                        setToastMessage(`「${item.name}」を補充しました。（※エブリィに同名品がないため自動引き落としはされません）`);
-                        setTimeout(() => setToastMessage(null), 4000);
+                // ★自動モードがONの場合のみ連動処理を実行
+                if (inventoryAutoMode) {
+                    // 天神・博多・清川で在庫がプラスされた場合、エブリィの同名備品から自動でマイナスする
+                    if (['天神', '博多', '清川'].includes(item.location) && change > 0) {
+                        const everyItem = inventoryItems.find(i => i.location === 'エブリィ' && i.name === item.name);
+                        if (everyItem) {
+                            const newEveryStock = Math.max(0, Number(everyItem.stock) - change);
+                            const everyLogData = { itemId: everyItem.id, itemName: everyItem.name, location: everyItem.location, change: -change, stockAfter: newEveryStock, timestamp: methods.serverTimestamp(), userId: user.uid };
+                            await handleUpdate('inventory', everyItem.id, { prevStock: everyItem.stock, prevChecked: everyItem.lastChecked || everyItem.createdAt?.toDate().toISOString() || now, stock: newEveryStock, lastChecked: now });
+                            await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), everyLogData);
+                            setToastMessage(`「${item.name}」を補充しました。エブリィの在庫から自動で ${change}個 引かれました。`);
+                            setTimeout(() => setToastMessage(null), 4000);
+                        } else {
+                            setToastMessage(`「${item.name}」を補充しました。（※エブリィに同名品がないため自動引き落としはされません）`);
+                            setTimeout(() => setToastMessage(null), 4000);
+                        }
                     }
-                }
 
-                // エブリィで在庫がプラスされた場合、事務所の同名備品から自動でマイナスする
-                if (item.location === 'エブリィ' && change > 0) {
-                    const officeItem = inventoryItems.find(i => i.location === '事務所' && i.name === item.name);
-                    if (officeItem) {
-                        const newOfficeStock = Math.max(0, Number(officeItem.stock) - change);
-                        const officeLogData = { itemId: officeItem.id, itemName: officeItem.name, location: officeItem.location, change: -change, stockAfter: newOfficeStock, timestamp: methods.serverTimestamp(), userId: user.uid };
-                        await handleUpdate('inventory', officeItem.id, { prevStock: officeItem.stock, prevChecked: officeItem.lastChecked || officeItem.createdAt?.toDate().toISOString() || now, stock: newOfficeStock, lastChecked: now });
-                        await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), officeLogData);
-                        setToastMessage(`「${item.name}」を補充しました。事務所の在庫から自動で ${change}個 引かれました。`);
-                        setTimeout(() => setToastMessage(null), 4000);
-                    } else {
-                        setToastMessage(`「${item.name}」を補充しました。（※事務所に同名品がないため自動引き落としはされません）`);
-                        setTimeout(() => setToastMessage(null), 4000);
+                    // エブリィで在庫がプラスされた場合、事務所の同名備品から自動でマイナスする
+                    if (item.location === 'エブリィ' && change > 0) {
+                        const officeItem = inventoryItems.find(i => i.location === '事務所' && i.name === item.name);
+                        if (officeItem) {
+                            const newOfficeStock = Math.max(0, Number(officeItem.stock) - change);
+                            const officeLogData = { itemId: officeItem.id, itemName: officeItem.name, location: officeItem.location, change: -change, stockAfter: newOfficeStock, timestamp: methods.serverTimestamp(), userId: user.uid };
+                            await handleUpdate('inventory', officeItem.id, { prevStock: officeItem.stock, prevChecked: officeItem.lastChecked || officeItem.createdAt?.toDate().toISOString() || now, stock: newOfficeStock, lastChecked: now });
+                            await methods.addDoc(methods.collection(db, 'artifacts', appId, 'public', 'data', 'inventory_logs'), officeLogData);
+                            setToastMessage(`「${item.name}」を補充しました。事務所の在庫から自動で ${change}個 引かれました。`);
+                            setTimeout(() => setToastMessage(null), 4000);
+                        } else {
+                            setToastMessage(`「${item.name}」を補充しました。（※事務所に同名品がないため自動引き落としはされません）`);
+                            setTimeout(() => setToastMessage(null), 4000);
+                        }
                     }
                 }
             };
@@ -1252,7 +1270,6 @@
                         </select>
                     </header>
 
-                    {/* スケジュールタブの場合は横幅を広く取り、それ以外は従来通りスリムにする */}
                     <main className={`p-4 mx-auto space-y-6 text-left transition-all duration-500 ${activeTab === 'schedule' ? 'max-w-6xl' : 'max-w-md'}`}>
                         {(!user || !dataLoaded) ? (<div className="flex flex-col items-center justify-center py-40 text-slate-400 gap-4 text-left"><Icon name="RefreshCw" className="animate-spin" size={32} /><p>同期中...</p></div>) : (
                             <>
@@ -1294,7 +1311,8 @@
                                         {(!isSelectionMode && !maintenanceDateFilter) && <button onClick={() => setShowArchive(!showArchive)} className="w-full py-4 bg-white border border-slate-200 rounded-2xl text-slate-500 font-black shadow-sm text-left">{showArchive ? "直近の報告のみ表示" : "すべての履歴を見る"}</button>}
                                     </div>
                                 )}
-                                {activeTab === 'inventory' && <InventorySection items={inventoryItems} onOpenAdd={() => setShowAddInventory(true)} onEdit={setEditingInventoryItem} onDelete={id => handleDelete('inventory', id)} onUpdateStock={handleUpdateStock} onShowHistory={setShowInventoryHistory} />}
+                                {/* ★変更箇所：InventorySectionに autoMode 状態を渡す */}
+                                {activeTab === 'inventory' && <InventorySection items={inventoryItems} onOpenAdd={() => setShowAddInventory(true)} onEdit={setEditingInventoryItem} onDelete={id => handleDelete('inventory', id)} onUpdateStock={handleUpdateStock} onShowHistory={setShowInventoryHistory} autoMode={inventoryAutoMode} setAutoMode={setInventoryAutoMode} />}
                                 {activeTab === 'manual' && <ManualSectionWrapperContainer manuals={manuals} selectedFacility={selectedFacility} onOpenAdd={(type) => { setManualTypeForAdd(type); setShowAddManual(true); }} onCopy={txt => copyToClipboard(txt, "本文をコピーしました")} onDelete={id => handleDelete('manuals', id)} onEdit={setEditingManual} onImageClick={(imgs, idx) => setImageGallery({images: imgs, index: idx})} appId={appId} />}
                             </>
                         )}
